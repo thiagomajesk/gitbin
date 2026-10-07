@@ -57,7 +57,7 @@ export async function candidate(
   identity: Connection["identity"],
 ): Promise<string> {
   validateVaults([publication.vault]);
-  const files: Record<string, string | Uint8Array | null> = Object.create(null);
+  const files = Object.create(null) as Record<string, string | Uint8Array | null>;
   for (const [id, bytes] of publication.states) {
     if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid file ID.");
     files[`.gitbin/vaults/${publication.vault.root}/${id}.bin`] = bytes;

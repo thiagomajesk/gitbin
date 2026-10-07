@@ -29,7 +29,7 @@ export class FileDocument {
   get content(): FileContent {
     const atomic = this.doc.getMap<unknown>("content").get("value");
     if (atomic !== undefined) return Schema.decodeUnknownSync(FileContent)(atomic);
-    return { type: "text", value: this.doc.getText("text").toString() };
+    return { type: "text", value: this.doc.getText("text").toJSON() };
   }
 
   locations(): ReadonlyArray<readonly [string, Location]> {
@@ -58,7 +58,7 @@ export class FileDocument {
     }
     const text = this.doc.getText("text");
     // Compute the complete edit before touching Yjs or advancing saved baselines.
-    const changes = diffChars(text.toString(), next.value, { timeout: 100 });
+    const changes = diffChars(text.toJSON(), next.value, { timeout: 100 });
     if (!changes)
       throw new Error("Text diff exceeded its processing limit. Saved edits remain pending.");
     this.doc.transact(() => {

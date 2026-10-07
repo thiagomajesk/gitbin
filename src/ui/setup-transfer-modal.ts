@@ -26,7 +26,7 @@ export function drawSetupQr(
 }
 
 export class SetupQrModal extends Modal {
-  private timer: ReturnType<typeof setInterval> | undefined;
+  private timer: { window: Window; id: number } | undefined;
   constructor(
     app: App,
     private payload: SyncSetupPayload | null,
@@ -99,7 +99,8 @@ export class SetupQrModal extends Modal {
       }
     };
     void refresh();
-    this.timer = setInterval(() => {
+    const ownerWindow = this.contentEl.win;
+    const id = ownerWindow.setInterval(() => {
       if (!refreshAt || generating) return;
       const seconds = Math.ceil((refreshAt - Date.now()) / 1000);
       if (seconds <= 0) {
@@ -111,9 +112,10 @@ export class SetupQrModal extends Modal {
           String((seconds / (setupCodeRefreshMs / 1000)) * 100),
         );
     }, 1000);
+    this.timer = { window: ownerWindow, id };
   }
   override onClose(): void {
-    clearInterval(this.timer);
+    if (this.timer) this.timer.window.clearInterval(this.timer.id);
     this.timer = undefined;
     this.payload = null;
     this.contentEl.empty();

@@ -9,19 +9,19 @@ export interface RetryHost {
 export const retryDelay = (attempt: number, random: number): number =>
   Math.min(60000, 2000 * 2 ** attempt * (0.8 + random * 0.4));
 export function createRetryLoop(host: RetryHost) {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timer: number | undefined;
   let stopped = false;
   let busy = false;
   let attempt = 0;
   let manual = false;
   let queued = false;
   const cancel = () => {
-    clearTimeout(timer);
+    window.clearTimeout(timer);
     timer = undefined;
   };
   const schedule = (delay: number) => {
     cancel();
-    timer = setTimeout(() => {
+    timer = window.setTimeout(() => {
       void run();
     }, delay);
   };

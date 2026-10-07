@@ -10,7 +10,7 @@ import {
 import { resolveRef, fetchObjects } from "just-git/repo";
 export interface Connection {
   readonly url: string;
-  readonly network: NetworkPolicy;
+  readonly network: NetworkPolicy & { readonly fetch: NonNullable<NetworkPolicy["fetch"]> };
   readonly credentials: CredentialProvider;
   readonly identity: {
     readonly author: { readonly name: string; readonly email: string };
@@ -21,12 +21,12 @@ export interface Connection {
 export function gitSession(connection: Connection) {
   const fs = connection.fs ?? new MemoryFileSystem();
   const cwd = "/repo";
-  let networkFailure: unknown;
+  let networkFailure: NetworkError | undefined;
   const network: NetworkPolicy = {
     ...connection.network,
     fetch: async (input, init) => {
       try {
-        const response = await (connection.network.fetch ?? globalThis.fetch)(input, init);
+        const response = await connection.network.fetch(input, init);
         if (!response.ok)
           networkFailure = new NetworkError({
             message: "Repository HTTP " + response.status,

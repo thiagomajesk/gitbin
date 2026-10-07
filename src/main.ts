@@ -63,8 +63,8 @@ export default class GitbinPlugin extends Plugin {
   private engine: SyncEngine | undefined;
   private engineScope: Scope.Closeable | undefined;
   private queue: Promise<unknown> = Promise.resolve();
-  private uploadTimer: ReturnType<typeof setTimeout> | undefined;
-  private captureTimer: ReturnType<typeof setTimeout> | undefined;
+  private uploadTimer: number | undefined;
+  private captureTimer: number | undefined;
   private stopped = false;
   private syncing = false;
   private attached = false;
@@ -270,7 +270,7 @@ export default class GitbinPlugin extends Plugin {
   }
 
   private restartSyncScheduling(): void {
-    clearTimeout(this.uploadTimer);
+    window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
     if (!this.config.setupComplete) return;
     this.retryLoop.start();
@@ -391,7 +391,7 @@ export default class GitbinPlugin extends Plugin {
   });
   async disconnect(): Promise<boolean> {
     this.retryLoop.stop();
-    clearTimeout(this.uploadTimer);
+    window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
     const disconnected = await this.enqueue(() =>
       Effect.gen({ self: this }, function* () {
@@ -399,7 +399,7 @@ export default class GitbinPlugin extends Plugin {
         const next = { ...this.config, setupComplete: false };
         yield* io("Cannot save the disconnected state.", () => this.saveData(next));
         yield* this.closeEngine();
-        clearTimeout(this.captureTimer);
+        window.clearTimeout(this.captureTimer);
         this.attached = false;
         this.config = next;
         this.setStatus("Disconnected");
@@ -485,7 +485,7 @@ export default class GitbinPlugin extends Plugin {
     }
     if (this.syncing) return Promise.resolve(false);
     this.syncing = true;
-    clearTimeout(this.uploadTimer);
+    window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
     return this.enqueue(() =>
       Effect.gen({ self: this }, function* () {
@@ -546,17 +546,17 @@ export default class GitbinPlugin extends Plugin {
     if (this.stopped || !this.captureReady()) return;
     this.ui.update({ pending: true });
     this.scheduleUpload();
-    clearTimeout(this.captureTimer);
-    this.captureTimer = setTimeout(() => {
+    window.clearTimeout(this.captureTimer);
+    this.captureTimer = window.setTimeout(() => {
       void this.enqueue(() => this.captureEdits());
     }, 500);
   }
 
   private scheduleUpload(): void {
-    clearTimeout(this.uploadTimer);
+    window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
     if (!this.config.setupComplete || !this.config.autoSync) return;
-    this.uploadTimer = setTimeout(() => {
+    this.uploadTimer = window.setTimeout(() => {
       this.uploadTimer = undefined;
       void this.retryLoop.wake();
     }, this.config.uploadDelay);
@@ -566,8 +566,8 @@ export default class GitbinPlugin extends Plugin {
     this.stopped = true;
     this.settingsTab?.dispose();
     this.retryLoop.stop();
-    if (this.captureTimer) clearTimeout(this.captureTimer);
-    clearTimeout(this.uploadTimer);
+    if (this.captureTimer) window.clearTimeout(this.captureTimer);
+    window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
     // Do not destroy CRDTs underneath an in-flight transaction.
     void this.queue.then(() => Effect.runPromise(this.closeEngine()));

@@ -39,7 +39,7 @@ Gitbin uses a Git repository to sync your vault's files between devices and CRDT
 
 - Node.js 24 or later.
 - pnpm 11.19.0.
-- Obsidian 1.11.4 or later.
+- Obsidian 1.13.0 or later.
 
 ### Commands
 
@@ -53,6 +53,7 @@ Gitbin uses a Git repository to sync your vault's files between devices and CRDT
 | `pnpm format` | Check formatting. |
 | `pnpm format:fix` | Apply formatting. |
 | `pnpm lint` | Run Biome lint checks. |
+| `pnpm lint:obsidian` | Run the official Obsidian ESLint rules with no warnings. |
 | `pnpm analyze` | Check for dead code with Fallow. |
 | `pnpm analyze:health` | Check complexity and code health with Fallow. |
 | `pnpm quality` | Run all checks, tests, and the production build. |

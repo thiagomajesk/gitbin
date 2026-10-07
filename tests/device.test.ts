@@ -13,10 +13,11 @@ it("uses the supplied email for attribution and retains the optional fallback", 
   });
 });
 
-const platform = vi.hoisted(() => ({ isDesktopApp: true, isIosApp: false }));
+const platform = vi.hoisted(() => ({ isDesktop: true, isDesktopApp: true, isIosApp: false }));
 vi.mock("obsidian", () => ({ Platform: platform }));
 beforeEach(() => {
   platform.isDesktopApp = true;
+  platform.isDesktop = true;
   platform.isIosApp = false;
 });
 
@@ -29,6 +30,7 @@ it("uses the desktop hostname without creating a device ID", async () => {
 
 it.each([true, false])("retains the mobile device label across calls (iOS: %s)", async (ios) => {
   platform.isDesktopApp = false;
+  platform.isDesktop = false;
   platform.isIosApp = ios;
   const secrets = new Map<string, string>();
   const storage = {

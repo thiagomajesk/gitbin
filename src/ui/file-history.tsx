@@ -63,13 +63,16 @@ function alignPreview(root: HTMLDivElement): void {
 
 function usePreviewBoundary() {
   const root = useRef<HTMLDivElement>(null);
-  const frame = useRef<number | null>(null);
+  const frame = useRef<{ window: Window; id: number } | null>(null);
   const measure = useCallback(() => {
-    if (frame.current !== null) cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => {
+    const ownerWindow = root.current?.ownerDocument.defaultView;
+    if (!ownerWindow) return;
+    if (frame.current) frame.current.window.cancelAnimationFrame(frame.current.id);
+    const id = ownerWindow.requestAnimationFrame(() => {
       frame.current = null;
       if (root.current) alignPreview(root.current);
     });
+    frame.current = { window: ownerWindow, id };
   }, []);
   useLayoutEffect(() => {
     if (!root.current) return;
@@ -77,7 +80,8 @@ function usePreviewBoundary() {
     observer.observe(root.current);
     return () => {
       observer.disconnect();
-      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      if (frame.current) frame.current.window.cancelAnimationFrame(frame.current.id);
+      frame.current = null;
     };
   }, [measure]);
   return { root, measure };
@@ -289,12 +293,13 @@ function SyncDiffContent({ selection }: { readonly selection: HistorySelection }
   const selectedFile = useRef<HTMLElement>(null);
   const virtualizer = useVirtualizer();
   useLayoutEffect(() => {
-    if (!selection.change) return;
-    const frame = requestAnimationFrame(() => {
+    const ownerWindow = selectedFile.current?.ownerDocument.defaultView;
+    if (!selection.change || !ownerWindow) return;
+    const frame = ownerWindow.requestAnimationFrame(() => {
       if (selectedFile.current && virtualizer)
         virtualizer.scrollTo({ top: virtualizer.getOffsetInScrollContainer(selectedFile.current) });
     });
-    return () => cancelAnimationFrame(frame);
+    return () => ownerWindow.cancelAnimationFrame(frame);
   }, [selection, virtualizer]);
   const { entry } = selection;
   const changes = useMemo(() => orderedChanges(entry.changes), [entry.changes]);

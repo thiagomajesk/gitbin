@@ -9,8 +9,8 @@ export function commitAuthor(config: Pick<Config, "username" | "commitEmail">, d
 export async function deviceName(
   storage: Pick<SecretStorage, "getSecret" | "setSecret">,
 ): Promise<string> {
-  if (Platform.isDesktopApp) {
-    const { hostname } = require("node:os") as typeof import("node:os");
+  if (Platform.isDesktop && Platform.isDesktopApp) {
+    const { hostname } = await import("node:os");
     return hostname();
   }
   const key = "gitbin-device-id";

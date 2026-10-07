@@ -11,9 +11,10 @@
     "format": "biome format .",
     "format:fix": "biome format --write .",
     "lint": "biome lint .",
+    "lint:obsidian": "eslint src --max-warnings 0",
     "analyze": "fallow dead-code --ci --format human",
     "analyze:health": "fallow health --format human",
-    "quality": "pnpm format && pnpm lint && pnpm check && pnpm analyze && pnpm analyze:health && pnpm test && pnpm build",
+    "quality": "pnpm format && pnpm lint && pnpm lint:obsidian && pnpm check && pnpm analyze && pnpm analyze:health && pnpm test && pnpm build",
     "dev": "vite build --watch --mode development"
   },
   "dependencies": {
@@ -39,6 +40,8 @@
     "@types/node": "26.6.4",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-plugin-obsidianmd": "0.4.2",
     "fallow": "3.31.0",
     "jsdom": "30.1.2",
     "obsidian": "1.13.1",

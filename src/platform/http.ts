@@ -1,19 +1,19 @@
 import type { NetworkPolicy } from "just-git";
 import { requestUrl } from "obsidian";
 async function withDeadline<A>(pending: Promise<A>): Promise<A> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timer: number | undefined;
   try {
     return await Promise.race([
       pending,
       new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(
+        timer = window.setTimeout(
           () => reject(new Error("Repository request timed out after 30 seconds.")),
           30000,
         );
       }),
     ]);
   } finally {
-    clearTimeout(timer);
+    window.clearTimeout(timer);
   }
 }
 export const obsidianFetch: NonNullable<NetworkPolicy["fetch"]> = async (input, init) => {

@@ -2,7 +2,7 @@
   "id": "gitbin",
   "name": "Gitbin",
   "version": "0.0.3",
-  "minAppVersion": "1.11.4",
+  "minAppVersion": "1.13.0",
   "description": "Sync your vaults across devices using Git. Conflicts are resolved automatically using CRDTs, so you can work offline and sync when you reconnect.",
   "author": "Gitbin",
   "isDesktopOnly": false

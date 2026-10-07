@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRetryLoop, retryDelay, type Outcome } from "../src/platform/retry";
 import { NetworkError, SyncError, retryable } from "../src/core/errors";
