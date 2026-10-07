@@ -15,7 +15,7 @@ Gitbin lets you sync your Obsidian vaults across devices using Git. It resolves 
 
 Mobile support is experimental and has not yet been tested on physical devices.
 
-Gitbin connects to the Git host you configure to download and upload vault content. It enumerates vault files for syncing and keeps hidden configuration folders local. On desktop, it uses Node.js filesystem metadata checks within the vault to reject symbolic links; file content is read and written through Obsidian's APIs.
+Gitbin connects to the Git host you configure to download and upload vault content. It enumerates vault files for syncing and keeps hidden configuration folders local. File content is read and written through Obsidian's APIs.
 
 ## How to use
 
@@ -29,6 +29,9 @@ To set up your phone, create a vault with the same name and install and enable G
 ## How it works
 
 Gitbin uses a Git repository to sync your vault's files between devices and CRDTs to resolve concurrent edits, moves and deletions automatically. Text edits are merged; binary files resolve as complete versions without merging their bytes. You can work offline and sync your changes when you reconnect.
+
+> [!WARNING]
+> Avoid symbolic links and junctions in your vault. Gitbin uses Obsidian's file APIs, which don't expose local symlink detection. Linked files or folders may cause sync to read or modify files outside your vault. See [Obsidian's guidance on symbolic links and junctions](https://obsidian.md/help/symlinks) and [Snyk's explanation of symlink risks](https://snyk.io/blog/symlinks-are-still-scary/) for more information.
 
 ## Development
 

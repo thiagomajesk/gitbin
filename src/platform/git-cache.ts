@@ -1,6 +1,6 @@
 import type { DataAdapter } from "obsidian";
 import type { FileSystem } from "just-git";
-import { ensureFolder, safeStorage } from "./storage";
+import { ensureFolder, validateStoragePath } from "./storage";
 
 export function gitCache(adapter: DataAdapter, directory: string): FileSystem {
   const objects = new Map<string, Uint8Array>();
@@ -35,11 +35,11 @@ export function gitCache(adapter: DataAdapter, directory: string): FileSystem {
     for (const key of objects.keys())
       if (key === value || key.startsWith(value.replace(/\/+$/, "") + "/")) forget(key);
   };
-  const path = async (value: string): Promise<string> => {
+  const path = (value: string): string => {
     if (value !== "/repo" && !value.startsWith("/repo/"))
       throw new Error("Git cache path is outside its repository.");
     const result = directory + value.replace(/\/+$/, "").slice(5);
-    await safeStorage(adapter, result);
+    validateStoragePath(result);
     return result;
   };
   return {
@@ -47,7 +47,7 @@ export function gitCache(adapter: DataAdapter, directory: string): FileSystem {
       if (value === "/") return true;
       if (value === "/.git" || value === "/HEAD") return false;
       if (cached(value)) return true;
-      return adapter.exists(await path(value));
+      return adapter.exists(path(value));
     },
     async stat(value) {
       const content = cached(value);
@@ -69,7 +69,7 @@ export function gitCache(adapter: DataAdapter, directory: string): FileSystem {
           mode: 0o040755,
           mtime: new Date(0),
         };
-      const info = await adapter.stat(await path(value));
+      const info = await adapter.stat(path(value));
       if (!info) throw new Error("Git cache entry does not exist.");
       return {
         isFile: info.type === "file",
@@ -82,36 +82,36 @@ export function gitCache(adapter: DataAdapter, directory: string): FileSystem {
     },
     async mkdir(value, options) {
       if (value === "/") return;
-      const target = await path(value);
+      const target = path(value);
       if (options?.recursive) await ensureFolder(adapter, target);
       else await adapter.mkdir(target);
     },
     async readdir(value) {
       if (value === "/") return (await adapter.exists(directory)) ? ["repo"] : [];
-      const entries = await adapter.list(await path(value));
+      const entries = await adapter.list(path(value));
       return [...entries.files, ...entries.folders].map((entry) =>
         entry.slice(entry.lastIndexOf("/") + 1),
       );
     },
     async readFile(value) {
-      return adapter.read(await path(value));
+      return adapter.read(path(value));
     },
     async readFileBuffer(value) {
       const saved = cached(value);
       if (saved) return new Uint8Array(saved);
-      const content = new Uint8Array(await adapter.readBinary(await path(value)));
+      const content = new Uint8Array(await adapter.readBinary(path(value)));
       remember(value, content);
       return content;
     },
     async writeFile(value, content) {
-      const target = await path(value);
+      const target = path(value);
       forget(value);
       if (typeof content === "string") await adapter.write(target, content);
       else await adapter.writeBinary(target, new Uint8Array(content).buffer);
       remember(value, typeof content === "string" ? new TextEncoder().encode(content) : content);
     },
     async rm(value, options) {
-      const target = await path(value);
+      const target = path(value);
       const info = await adapter.stat(target);
       if (!info) {
         if (options?.force) {

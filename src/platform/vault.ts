@@ -5,7 +5,7 @@ import type { Journal } from "../core/protocol";
 import type { HistoryState } from "../core/history";
 import { validPath } from "../core/protocol";
 import { contentFromBytes, contentBytes, contentEqual, type FileContent } from "../core/content";
-import { ensureFolder, safeStorage } from "./storage";
+import { ensureFolder, validateStoragePath } from "./storage";
 
 export class ObsidianVault implements LocalVault {
   constructor(
@@ -13,9 +13,9 @@ export class ObsidianVault implements LocalVault {
     private readonly localDirectory: string,
   ) {}
 
-  private safe = async (path: string): Promise<void> => {
+  private safe = (path: string): void => {
     if (!validPath(path)) throw new Error("Unsupported file path.");
-    await safeStorage(this.app.vault.adapter, path);
+    validateStoragePath(path);
   };
   private fileContent = async (file: TFile): Promise<FileContent> =>
     contentFromBytes(file.path, new Uint8Array(await this.app.vault.readBinary(file)));
@@ -25,14 +25,14 @@ export class ObsidianVault implements LocalVault {
       const files = new Map<string, FileContent>();
       for (const file of this.app.vault.getFiles()) {
         if (file.path.split("/").some((segment) => segment.startsWith("."))) continue;
-        await this.safe(file.path);
+        this.safe(file.path);
         files.set(file.path, await this.fileContent(file));
       }
       return files;
     });
   read = (path: string) =>
     io("Cannot read the local file.", async () => {
-      await this.safe(path);
+      this.safe(path);
       const file = this.app.vault.getFileByPath(path);
       return file ? this.fileContent(file) : null;
     });
@@ -75,7 +75,7 @@ export class ObsidianVault implements LocalVault {
     io(
       `Cannot apply ${path}: the file may have changed during sync. Your content was preserved.`,
       async () => {
-        await this.safe(path);
+        this.safe(path);
         const file = this.app.vault.getFileByPath(path);
         if (file) {
           await this.updateFile(file, expected, next);
@@ -89,7 +89,7 @@ export class ObsidianVault implements LocalVault {
     io("Cannot load Gitbin's local journal.", async (): Promise<unknown> => {
       const adapter = this.app.vault.adapter;
       const file = this.localDirectory + "/journal.json";
-      await safeStorage(adapter, file);
+      validateStoragePath(file);
       if (!(await adapter.exists(file))) return null;
       return JSON.parse(await adapter.read(file)) as unknown;
     });
@@ -97,7 +97,7 @@ export class ObsidianVault implements LocalVault {
     io("Cannot load local sync history.", async (): Promise<unknown> => {
       const adapter = this.app.vault.adapter;
       const file = `${this.localDirectory}/history.json`;
-      await safeStorage(adapter, file);
+      validateStoragePath(file);
       return (await adapter.exists(file))
         ? (JSON.parse(await adapter.read(file)) as unknown)
         : null;
@@ -107,7 +107,7 @@ export class ObsidianVault implements LocalVault {
       const adapter = this.app.vault.adapter;
       await ensureFolder(adapter, this.localDirectory);
       const file = `${this.localDirectory}/history.json`;
-      await safeStorage(adapter, file);
+      validateStoragePath(file);
       const data = JSON.stringify(history);
       if (await adapter.exists(file)) await adapter.process(file, () => data);
       else await adapter.write(file, data);
@@ -117,7 +117,7 @@ export class ObsidianVault implements LocalVault {
       const adapter = this.app.vault.adapter;
       await ensureFolder(adapter, this.localDirectory);
       const file = this.localDirectory + "/journal.json";
-      await safeStorage(adapter, file);
+      validateStoragePath(file);
       const data = JSON.stringify(journal);
       if (await adapter.exists(file)) await adapter.process(file, () => data);
       else await adapter.write(file, data);
