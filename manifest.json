@@ -1,0 +1,9 @@
+{
+  "id": "gitbin",
+  "name": "Gitbin",
+  "version": "0.0.1",
+  "minAppVersion": "1.11.4",
+  "description": "Gitbin lets you sync your Obsidian vaults across devices using Git. It resolves conflicts automatically using CRDTs, so you can work offline and sync when you reconnect.",
+  "author": "Gitbin",
+  "isDesktopOnly": false
+}

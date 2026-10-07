@@ -1,0 +1,7 @@
+- Commit using the Conventional Commits specification.
+- Run the full quality gate before committing any changes.
+- Prefer the simplest solutions that could reasonably work.
+- Prefer declarative over imperative code whenever possible.
+- Define tests and success criteria before implementing non-trivial logic.
+- All domain code that can reasonably use EffectTS should use its features.
+- A test must protect observable behavior, a credible regression, an invariant, or an independent contract against a plausible failure.

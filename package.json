@@ -1,0 +1,55 @@
+{
+  "name": "gitbin",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "format": "biome format .",
+    "format:fix": "biome format --write .",
+    "lint": "biome lint .",
+    "analyze": "fallow dead-code --ci --format human",
+    "analyze:health": "fallow health --format human",
+    "quality": "pnpm format && pnpm lint && pnpm check && pnpm analyze && pnpm analyze:health && pnpm test && pnpm build",
+    "dev": "vite build --watch --mode development"
+  },
+  "dependencies": {
+    "@noble/hashes": "2.4.0",
+    "@pierre/diffs": "1.5.2",
+    "@radix-ui/react-label": "2.1.15",
+    "@radix-ui/react-primitive": "2.1.10",
+    "diff": "9.0.0",
+    "effect": "4.0.0",
+    "just-git": "https://github.com/thiagomajesk/just-git/releases/download/partial-clone-preview-9fb4ff4/just-git-1.9.0.tgz",
+    "lean-qr": "2.7.4",
+    "lucide-react": "1.52.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "shiki": "4.5.0",
+    "yjs": "13.6.33"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "fallow": "3.31.0",
+    "jsdom": "30.1.2",
+    "obsidian": "1.13.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.19.0"
+}

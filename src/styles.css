@@ -1,0 +1,601 @@
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(gitbin);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(gitbin) source(none);
+@source "./ui";
+
+.gitbin-setup-qr {
+  display: block;
+  width: min(100%, 360px, 45vh);
+  height: auto;
+  margin: var(--size-4-5) auto;
+  image-rendering: pixelated;
+}
+.gitbin-setup-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gitbin-setup-modal .modal-title {
+  flex-shrink: 0;
+}
+.gitbin-setup-modal .modal-content {
+  min-height: 0;
+  overflow-y: auto;
+}
+.gitbin-setup-modal .modal-title,
+.gitbin-setup-share {
+  text-align: center;
+}
+.gitbin-setup-warning {
+  color: var(--text-warning);
+}
+.gitbin-setup-pin {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-large);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.25em;
+  font-variant-numeric: tabular-nums;
+}
+.gitbin-setup-qr[hidden] {
+  display: none;
+}
+.gitbin-setup-progress {
+  width: 120px;
+  margin: 0 auto var(--size-4-5);
+}
+.gitbin-setup-progress .setting-progress-bar {
+  height: 3px;
+  background: var(--background-modifier-border);
+  box-shadow: none;
+}
+.gitbin-setup-progress .setting-progress-bar-inner {
+  transform-origin: left;
+  animation: gitbin-code-countdown var(--gitbin-code-refresh) linear forwards;
+}
+@keyframes gitbin-code-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* No Preflight: Obsidian owns native controls and global defaults. */
+.gitbin-ui {
+  min-width: 0;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+  line-height: var(--line-height-normal);
+}
+.gitbin-ui h3 {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  margin-block: var(--size-4-4) var(--size-4-2);
+}
+.gitbin-ui :is(button, input):focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+}
+.gitbin-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  overflow-wrap: anywhere;
+}
+.gitbin-error {
+  color: var(--text-error);
+  border-left: 3px solid var(--text-error);
+  padding: var(--size-4-2) var(--size-4-3);
+  overflow-wrap: anywhere;
+}
+.gitbin-view {
+  padding: var(--size-4-6);
+  overflow: auto;
+}
+.gitbin-settings-setup {
+  width: 100%;
+  max-width: var(--setting-group-max-width);
+  margin-inline: auto;
+}
+.gitbin-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-4);
+  padding-inline: var(--size-4-4);
+  margin-block: var(--size-4-4) var(--size-4-2);
+}
+.gitbin-ui .gitbin-settings-header h3 {
+  margin: 0;
+  padding: 0;
+}
+.gitbin-header-actions {
+  display: flex;
+  gap: var(--size-4-2);
+}
+.gitbin-ui button.gitbin-header-action {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--icon-color);
+  height: auto;
+}
+.gitbin-ui button.gitbin-header-action:hover {
+  background: var(--background-modifier-hover);
+  color: var(--icon-color-hover);
+}
+.gitbin-ui .gitbin-repository-form .setting-item.gitbin-field {
+  padding: 0;
+  border: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--size-4-2);
+}
+.gitbin-ui .gitbin-repository-form .setting-item.gitbin-field::before {
+  display: none;
+}
+.gitbin-field .setting-item-info {
+  min-width: 0;
+  margin-inline-end: 0;
+}
+.gitbin-field .setting-item-name {
+  display: block;
+}
+.gitbin-field .setting-item-control {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+.gitbin-ui input.gitbin-text-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: var(--input-height);
+  padding: var(--size-4-1) var(--size-4-2);
+  border-radius: var(--input-radius);
+  border: var(--input-border-width) solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small);
+}
+.gitbin-ui input.gitbin-text-input:disabled {
+  color: var(--text-faint);
+  -webkit-text-fill-color: var(--text-faint);
+  opacity: 1;
+  cursor: default;
+}
+.gitbin-status-current {
+  color: var(--color-green);
+}
+.gitbin-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--size-4-2) var(--size-4-4);
+  margin-block: var(--size-4-4);
+}
+.gitbin-summary dt {
+  color: var(--text-muted);
+}
+.gitbin-summary dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.gitbin-spinner {
+  animation: gitbin-spin 1s linear infinite;
+}
+@keyframes gitbin-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gitbin-spinner {
+    animation: none;
+  }
+}
+.gitbin-history-view {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  container-type: inline-size;
+}
+.gitbin-history-heading {
+  font-size: var(--font-ui-large);
+  margin: 0 0 var(--size-4-3);
+}
+.gitbin-ui input.gitbin-history-search {
+  width: 100%;
+  margin-bottom: var(--size-4-5);
+}
+.gitbin-history-files mark {
+  color: var(--text-normal);
+  background: var(--text-highlight-bg);
+  border-radius: 2px;
+}
+.gitbin-sync-status p {
+  margin: 0;
+}
+.gitbin-sync-status .gitbin-summary {
+  font-size: var(--font-ui-small);
+  margin: 0;
+  row-gap: var(--size-4-4);
+}
+.gitbin-sync-status-group {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  gap: var(--size-4-4);
+}
+.gitbin-sync-status-group + .gitbin-sync-status-group {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: var(--size-4-4);
+}
+.gitbin-timeline {
+  display: grid;
+  gap: var(--size-4-6);
+}
+.gitbin-ui .gitbin-day-marker {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-3);
+  margin: 0 0 var(--size-4-3);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-medium);
+}
+.gitbin-day-marker::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+}
+.gitbin-day-entries {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--size-4-3);
+  list-style: none;
+  margin: 0 0 0 3px;
+  padding: 0 0 0 var(--size-4-4);
+  border-inline-start: 1px solid var(--background-modifier-border);
+}
+.gitbin-timeline-entry {
+  min-width: 0;
+  margin: 0;
+  padding: var(--size-4-4);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l);
+  background: var(--background-primary-alt);
+}
+.gitbin-sync-time {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--size-4-3);
+  margin: 0 0 var(--size-4-3);
+  padding-bottom: var(--size-4-3);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+}
+.gitbin-sync-time h4 {
+  margin: 0;
+  font: inherit;
+}
+.gitbin-sync-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  min-width: 0;
+}
+.gitbin-sync-preview {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: var(--size-4-8);
+  padding-inline: 0;
+  justify-content: center;
+}
+.gitbin-sync-time time {
+  flex-shrink: 0;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-normal);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.gitbin-history-files {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--size-4-2);
+}
+.gitbin-history-files li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--size-4-3);
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.gitbin-history-files a {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--size-4-2);
+  overflow-wrap: anywhere;
+  color: var(--text-normal);
+  text-decoration: none;
+}
+.gitbin-file-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-4-8);
+  gap: var(--size-4-1);
+  flex-shrink: 0;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.gitbin-file-state.is-added {
+  color: var(--color-green);
+}
+.gitbin-file-state.is-removed {
+  color: var(--color-red);
+}
+.gitbin-file-state.is-changed {
+  color: var(--color-orange);
+}
+.gitbin-history-files a:hover {
+  text-decoration: underline;
+}
+.gitbin-history-files a svg {
+  flex-shrink: 0;
+  align-self: center;
+  color: var(--text-muted);
+}
+.gitbin-history-files a:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-s);
+}
+.gitbin-history-modal {
+  width: min(1200px, calc(100vw - var(--size-4-8)));
+  max-width: calc(100vw - var(--size-4-8));
+  height: 85vh;
+}
+.gitbin-history-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.gitbin-diff-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.gitbin-diff-scroll-content {
+  padding: var(--size-4-1) var(--size-4-4) var(--size-4-3) var(--size-4-1);
+}
+.gitbin-history-comparison {
+  container-type: inline-size;
+}
+.gitbin-sync-diffs {
+  display: grid;
+  gap: var(--size-4-5);
+}
+.gitbin-sync-file {
+  container-type: inline-size;
+  min-width: 0;
+  scroll-margin-top: var(--size-4-3);
+  border-color: var(--background-modifier-border);
+  border-radius: var(--radius-l);
+  background: transparent;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--background-modifier-box-shadow) 60%, transparent);
+}
+.gitbin-sync-file.is-selected {
+  animation: gitbin-file-highlight 1.8s ease-out 150ms;
+}
+@keyframes gitbin-file-highlight {
+  0%,
+  30% {
+    border-color: var(--interactive-accent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gitbin-sync-file.is-selected {
+    animation: none;
+    border-color: var(--interactive-accent);
+  }
+}
+.gitbin-diff-file-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-color: inherit;
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3) var(--size-4-4);
+  background: var(--background-primary);
+}
+.gitbin-diff-file-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid;
+  border-color: inherit;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  background: var(--background-secondary);
+  pointer-events: none;
+}
+.gitbin-sync-file.is-selected .gitbin-diff-file-header::before {
+  animation: gitbin-header-highlight 1.8s ease-out 150ms;
+}
+@keyframes gitbin-header-highlight {
+  0%,
+  30% {
+    background: color-mix(in srgb, var(--interactive-accent) 22%, var(--background-secondary));
+  }
+  100% {
+    background: var(--background-secondary);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gitbin-sync-file.is-selected .gitbin-diff-file-header::before {
+    animation: none;
+    background: color-mix(in srgb, var(--interactive-accent) 22%, var(--background-secondary));
+  }
+}
+.gitbin-diff-file-header > svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.gitbin-diff-file-header h3 {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--font-ui-small);
+  font-family: var(--font-monospace);
+  overflow-wrap: anywhere;
+}
+.gitbin-diff-counts {
+  margin-inline-start: auto;
+  display: flex;
+  gap: var(--size-4-2);
+  flex-shrink: 0;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.gitbin-diff-added {
+  color: var(--color-green);
+}
+.gitbin-diff-removed {
+  color: var(--color-red);
+}
+.gitbin-diff-file-body {
+  padding: var(--size-4-4);
+  border: 1px solid;
+  border-top: 0;
+  border-color: inherit;
+  border-end-start-radius: var(--radius-l);
+  border-end-end-radius: var(--radius-l);
+}
+.gitbin-diff-sources {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--size-4-3);
+  margin-bottom: var(--size-4-4);
+}
+.gitbin-diff-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.gitbin-diff-preview {
+  height: 360px;
+  overflow: hidden;
+}
+.gitbin-diff-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--size-4-2);
+}
+.gitbin-diff-panel .gitbin-diff-label h4 {
+  margin-bottom: 0;
+}
+.gitbin-diff-panel h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--size-4-2);
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+}
+.gitbin-diff-panel h4 > svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.gitbin-diff-viewer {
+  flex: 1;
+  min-height: calc(var(--font-ui-small) * 2 + var(--size-4-4));
+  --diffs-font-family: var(--font-monospace);
+  --diffs-header-font-family: var(--font-interface);
+  --diffs-font-size: var(--font-ui-small);
+  --diffs-addition-color-override: var(--color-green);
+  --diffs-deletion-color-override: var(--color-red);
+  --diffs-bg-addition-override: color-mix(
+    in srgb,
+    var(--color-green) 10%,
+    var(--background-primary)
+  );
+  --diffs-bg-deletion-override: color-mix(in srgb, var(--color-red) 10%, var(--background-primary));
+  --diffs-bg-addition-emphasis-override: color-mix(
+    in srgb,
+    var(--color-green) 25%,
+    var(--background-primary)
+  );
+  --diffs-bg-deletion-emphasis-override: color-mix(
+    in srgb,
+    var(--color-red) 25%,
+    var(--background-primary)
+  );
+  min-width: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--background-primary),
+    var(--background-primary) 5px,
+    var(--background-primary-alt) 5px,
+    var(--background-primary-alt) 10px
+  );
+  overflow: hidden;
+}
+@container (max-width: 560px) {
+  .gitbin-diff-sources {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gitbin-timeline-entry {
+    padding: var(--size-4-3);
+  }
+}
+.gitbin-ui .setting-item.gitbin-sync-preference {
+  padding: 0;
+  border: 0;
+  gap: var(--size-4-4);
+}
+.gitbin-ui .setting-item.gitbin-sync-preference::before {
+  display: none;
+}
+.gitbin-ui .setting-item.gitbin-sync-preference + .setting-item.gitbin-sync-preference {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: var(--size-4-4);
+}
+.gitbin-sync-preference .setting-item-info {
+  margin-inline-end: 0;
+}
+.gitbin-sync-preference .setting-item-control {
+  flex-shrink: 0;
+}
+@media (max-width: 500px) {
+  .gitbin-sync-preference:has(select) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gitbin-sync-preference select {
+    width: 100%;
+  }
+}
