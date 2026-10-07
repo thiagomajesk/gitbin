@@ -42,6 +42,11 @@ export async function gitServer(root: string) {
       response.writeHead(500);
       response.end();
     });
+    child.stdin.on("error", () => {
+      if (response.writableEnded) return;
+      response.writeHead(500);
+      response.end();
+    });
     child.on("close", () => {
       if (response.writableEnded) return;
       const raw = Buffer.concat(output);

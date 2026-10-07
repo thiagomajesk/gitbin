@@ -60,7 +60,7 @@ export class ObsidianVault implements LocalVault {
     const folderAtPath = this.app.vault.getFolderByPath(path);
     if (folderAtPath) {
       if (folderAtPath.children.length > 0) throw new Error("A nonempty folder blocks this file.");
-      await this.app.vault.trash(folderAtPath, false);
+      await this.app.fileManager.trashFile(folderAtPath);
     }
     const segments = path.split("/");
     segments.pop();

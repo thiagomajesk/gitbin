@@ -55,7 +55,7 @@ export function SyncPreferencesForm({ actions }: { readonly actions: SetupAction
             </div>
           </div>
         </div>
-        <div className="setting-item gitbin-sync-preference">
+        <div className="setting-item gitbin-sync-preference gitbin-sync-delay">
           <div className="setting-item-info">
             <label htmlFor={id + "-upload"} className="setting-item-name">
               Send local changes after
@@ -85,7 +85,7 @@ export function SyncPreferencesForm({ actions }: { readonly actions: SetupAction
             </Primitive.select>
           </div>
         </div>
-        <div className="setting-item gitbin-sync-preference">
+        <div className="setting-item gitbin-sync-preference gitbin-sync-delay">
           <div className="setting-item-info">
             <label htmlFor={id + "-remote"} className="setting-item-name">
               Check for remote changes every

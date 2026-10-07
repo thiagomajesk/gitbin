@@ -15,6 +15,8 @@ Gitbin lets you sync your Obsidian vaults across devices using Git. It resolves 
 
 Mobile support is experimental and has not yet been tested on physical devices.
 
+Gitbin connects to the Git host you configure to download and upload vault content. It enumerates vault files for syncing and keeps hidden configuration folders local. On desktop, it uses Node.js filesystem metadata checks within the vault to reject symbolic links; file content is read and written through Obsidian's APIs.
+
 ## How to use
 
 1. **Install Gitbin.** Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/thiagomajesk/gitbin/releases/latest) into your vault's `.obsidian/plugins/gitbin/` folder, or install the release using [BRAT](https://github.com/TfTHacker/obsidian42-brat). Reload Obsidian and enable **Gitbin** under **Settings → Community plugins**.

@@ -566,7 +566,6 @@ export default class GitbinPlugin extends Plugin {
     this.stopped = true;
     this.settingsTab?.dispose();
     this.retryLoop.stop();
-    this.app.workspace.detachLeavesOfType(historyType);
     if (this.captureTimer) clearTimeout(this.captureTimer);
     clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
