@@ -1,10 +1,11 @@
+import { Effect, Schema } from "effect";
 import type { App } from "obsidian";
+import { BlobId, binaryObject } from "../core/blobs";
+import { explain, SyncError } from "../core/errors";
+import { Journal } from "../core/protocol";
 import type { ConsolidationPreview } from "../git/consolidation";
 import type { MigrationSnapshot } from "../maintenance/types";
 import { ensureFolder } from "./storage";
-import { Schema } from "effect";
-import { Journal } from "../core/protocol";
-import { binaryObject, BlobId } from "../core/blobs";
 
 export function maintenanceStorage(app: App, directory: string) {
   const adapter = app.vault.adapter;
@@ -99,5 +100,17 @@ export function maintenanceStorage(app: App, directory: string) {
         directory + "/consolidation-stale-" + crypto.randomUUID() + ".json",
       );
   };
-  return { loadDevice, stage, pending, install, discardStale };
+  return {
+    loadDevice: () => operation(loadDevice),
+    stage: (preview: ConsolidationPreview) => operation(() => stage(preview)),
+    pending: () => operation(pending),
+    install: () => operation(install),
+    discardStale: () => operation(discardStale),
+  };
 }
+
+const operation = <A>(action: () => Promise<A>) =>
+  Effect.tryPromise({
+    try: action,
+    catch: (cause) => new SyncError({ message: explain(cause), cause }),
+  });

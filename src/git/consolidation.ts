@@ -1,49 +1,83 @@
-import { reinitializeRepository } from "../maintenance/reinitialize";
-import type { GitRepo } from "just-git";
 import { Effect } from "effect";
-import { readCommit, flattenTree, readBlob, buildCommit } from "just-git/repo";
-import { createMigrationEngine } from "../maintenance/engine";
+import type { GitRepo } from "just-git";
+import { buildCommit, flattenTree, readBlob, readCommit } from "just-git/repo";
+import { attempt, io, SyncError } from "../core/errors";
 import { metadataPath, readMetadata } from "../core/metadata";
 import { parseStoredData } from "../core/storage-format";
-import type { MigrationSnapshot } from "../maintenance/types";
-import type { Connection } from "./session";
-import { gitSession } from "./session";
+import { createMigrationEngine } from "../maintenance/engine";
+import { reinitializeRepository } from "../maintenance/reinitialize";
+import type { ConsolidatedData, MigrationSnapshot } from "../maintenance/types";
+import { type Connection, gitSession } from "./session";
 
+export interface ConsolidationPreview extends ConsolidatedData {
+  readonly sourceRevision: string;
+  readonly revision: string;
+  readonly originalJournal: string | null;
+}
+const readEntries = (repo: GitRepo, revision: string) =>
+  io("Cannot read the committed Git tree.", async () =>
+    flattenTree(repo, (await readCommit(repo, revision)).tree),
+  );
+const readConsolidationHash = Effect.fn("maintenance.readHash")(function* (
+  repo: GitRepo,
+  revision: string,
+  hydrate: (hashes: readonly string[]) => Promise<unknown>,
+) {
+  const entries = yield* readEntries(repo, revision);
+  const hash = entries.find((entry) => entry.path === metadataPath)?.hash;
+  if (!hash) return null;
+  yield* io("Cannot fetch repository metadata.", () => hydrate([hash]));
+  const bytes = yield* io("Cannot read repository metadata.", () => readBlob(repo, hash));
+  return yield* attempt(
+    "Cannot validate repository metadata.",
+    () => readMetadata(parseStoredData(new TextDecoder().decode(bytes))).consolidationHash,
+  );
+});
 export function consolidation(connection: Connection) {
   const session = gitSession(connection);
-  const preview = async (
+  const preview = Effect.fn("maintenance.preview")(function* (
     device: MigrationSnapshot | null = null,
     rebuildRoots?: readonly string[],
     report: (message: string) => void = () => {},
-  ) => {
+  ): Effect.fn.Return<ConsolidationPreview, SyncError> {
     report("Fetching repository…");
-    const { repo, revision } = await session.fetch();
-    if (!revision) throw new Error("Consolidation requires an existing main branch.");
-    const entries = await flattenTree(repo, (await readCommit(repo, revision)).tree);
+    const { repo, revision } = yield* io("Cannot fetch repository.", session.fetch);
+    if (!revision)
+      return yield* new SyncError({ message: "Consolidation requires an existing main branch." });
+    const entries = yield* readEntries(repo, revision);
     if (entries.some((entry) => entry.mode !== "100644"))
-      throw new Error(
-        "Consolidation currently requires regular non-executable files. No files were changed.",
-      );
+      return yield* new SyncError({
+        message:
+          "Consolidation currently requires regular non-executable files. No files were changed.",
+      });
     report("Reading repository files…");
-    await session.hydrate(repo, [...new Set(entries.map((entry) => entry.hash))]);
+    yield* io("Cannot fetch repository files.", () =>
+      session.hydrate(repo, [...new Set(entries.map((entry) => entry.hash))]),
+    );
     const files = new Map<string, Uint8Array>();
-    for (const entry of entries) files.set(entry.path, await readBlob(repo, entry.hash));
+    for (const entry of entries)
+      files.set(
+        entry.path,
+        yield* io("Cannot read repository file.", () => readBlob(repo, entry.hash)),
+      );
     const source: MigrationSnapshot = { kind: "repository", files };
     report(rebuildRoots ? "Rebuilding metadata…" : "Preparing repository…");
-    const data = await Effect.runPromise(
-      createMigrationEngine().prepare(
-        rebuildRoots ? reinitializeRepository(source, rebuildRoots) : source,
-        device,
-      ),
-    );
+    const prepared = rebuildRoots
+      ? yield* attempt("Cannot rebuild repository metadata.", () =>
+          reinitializeRepository(source, rebuildRoots),
+        )
+      : source;
+    const data = yield* createMigrationEngine().prepare(prepared, device);
     report("Creating replacement revision…");
-    const built = await buildCommit(repo, {
-      files: Object.fromEntries(data.repository.files),
-      message: rebuildRoots
-        ? "gitbin: reinitialize repository\n"
-        : "gitbin: consolidate repository\n",
-      author: connection.identity.author,
-    });
+    const built = yield* io("Cannot create replacement revision.", () =>
+      buildCommit(repo, {
+        files: Object.fromEntries(data.repository.files),
+        message: rebuildRoots
+          ? "gitbin: reinitialize repository\n"
+          : "gitbin: consolidate repository\n",
+        author: connection.identity.author,
+      }),
+    );
     return {
       sourceRevision: revision,
       revision: built.hash,
@@ -51,56 +85,53 @@ export function consolidation(connection: Connection) {
       ...data,
       vaults: rebuildRoots ? [...new Set([...rebuildRoots, ...data.vaults])].sort() : data.vaults,
     };
-  };
-  const status = async (
+  });
+  const status = Effect.fn("maintenance.status")(function* (
     expected: string,
     revision: string,
-  ): Promise<"complete" | "pending" | "stale"> => {
-    const current = await session.fetch();
+  ): Effect.fn.Return<"complete" | "pending" | "stale", SyncError> {
+    const current = yield* io("Cannot fetch repository state.", session.fetch);
     if (current.revision === revision) return "complete";
     if (current.revision === expected) return "pending";
     if (!current.revision) return "stale";
     const hydrate = (hashes: readonly string[]) => session.hydrate(current.repo, hashes);
-    const before = await readConsolidationHash(current.repo, revision, hydrate);
-    const after = await readConsolidationHash(current.repo, current.revision, hydrate);
+    const before = yield* readConsolidationHash(current.repo, revision, hydrate);
+    const after = yield* readConsolidationHash(current.repo, current.revision, hydrate);
     return before && before === after ? "complete" : "stale";
-  };
-  const apply = async (
+  });
+  const apply = Effect.fn("maintenance.apply")(function* (
     expected: string,
     revision: string,
     report: (message: string) => void = () => {},
-  ) => {
+  ) {
     report("Checking repository revision…");
-    const current = await session.fetch();
-    if ((await status(expected, revision)) === "complete") return;
+    const current = yield* io("Cannot fetch repository state.", session.fetch);
+    if ((yield* status(expected, revision)) === "complete") return;
     if (current.revision !== expected)
-      throw new Error("Repository changed since preview. Preview consolidation again.");
-    const root = await readCommit(current.repo, revision);
-    if (root.parents.length !== 0) throw new Error("Consolidation must publish a root commit.");
-    await current.repo.refStore.writeRef("refs/heads/main", revision);
-    try {
-      report("Publishing repository…");
-      await session.pushConsolidation(expected);
-    } catch (error) {
-      if ((await status(expected, revision)) !== "complete") throw error;
-    }
+      return yield* new SyncError({
+        message: "Repository changed since preview. Preview consolidation again.",
+      });
+    const root = yield* io("Cannot read replacement revision.", () =>
+      readCommit(current.repo, revision),
+    );
+    if (root.parents.length !== 0)
+      return yield* new SyncError({ message: "Consolidation must publish a root commit." });
+    yield* io("Cannot update the local branch.", () =>
+      current.repo.refStore.writeRef("refs/heads/main", revision),
+    );
+    report("Publishing repository…");
+    yield* io("Cannot publish repository.", () => session.pushConsolidation(expected)).pipe(
+      Effect.catch((error) =>
+        Effect.gen(function* () {
+          if ((yield* status(expected, revision)) !== "complete") return yield* error;
+        }),
+      ),
+    );
     report("Verifying publication…");
-    if ((await status(expected, revision)) !== "complete")
-      throw new Error("Cannot verify consolidation. Check repository state before retrying.");
-  };
+    if ((yield* status(expected, revision)) !== "complete")
+      return yield* new SyncError({
+        message: "Cannot verify consolidation. Check repository state before retrying.",
+      });
+  });
   return { preview, apply, status };
-}
-export type ConsolidationPreview = Awaited<ReturnType<ReturnType<typeof consolidation>["preview"]>>;
-
-async function readConsolidationHash(
-  repo: GitRepo,
-  revision: string,
-  hydrate: (hashes: readonly string[]) => Promise<unknown>,
-): Promise<string | null> {
-  const entries = await flattenTree(repo, (await readCommit(repo, revision)).tree);
-  const hash = entries.find((entry) => entry.path === metadataPath)?.hash;
-  if (!hash) return null;
-  await hydrate([hash]);
-  return readMetadata(parseStoredData(new TextDecoder().decode(await readBlob(repo, hash))))
-    .consolidationHash;
 }

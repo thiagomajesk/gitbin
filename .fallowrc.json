@@ -4,7 +4,57 @@
   "ignorePatterns": ["dist/**", "coverage/**", "node_modules/**", ".fallow/**"],
   "ignoreDependencies": ["obsidian"],
   "usedClassMembers": ["onload", "onunload", "display", "onOpen", "onClose"],
-  "typeAware": { "enabled": true },
-  "health": { "ignore": ["tests/**"] },
-  "duplicates": { "ignore": ["tests/**"] }
+  "typeAware": {
+    "enabled": true
+  },
+  "health": {
+    "ignore": ["tests/**"]
+  },
+  "duplicates": {
+    "ignore": ["tests/**"]
+  },
+  "boundaries": {
+    "zones": [
+      {
+        "name": "runtime",
+        "patterns": ["src/main.ts", "src/ui/setup-transfer-modal.ts"]
+      },
+      {
+        "name": "tests",
+        "patterns": ["tests/**"]
+      },
+      {
+        "name": "source",
+        "patterns": ["src/**"]
+      },
+      {
+        "name": "tooling",
+        "patterns": ["tooling/**", "*.ts", "*.mjs"]
+      }
+    ],
+    "coverage": {
+      "requireAllFiles": true
+    },
+    "calls": {
+      "forbidden": [
+        {
+          "from": "source",
+          "callee": [
+            "Effect.runPromise",
+            "Effect.runPromiseExit",
+            "Effect.runSync",
+            "Effect.runSyncExit",
+            "Effect.runFork",
+            "Effect.runCallback",
+            "Effect.runPromiseWith",
+            "Effect.runPromiseExitWith",
+            "Effect.runSyncWith",
+            "Effect.runSyncExitWith",
+            "Effect.runForkWith",
+            "Effect.runCallbackWith"
+          ]
+        }
+      ]
+    }
+  }
 }

@@ -1,67 +1,71 @@
+import { Context, Effect, Exit, Layer, Scope } from "effect";
+import { Notice, Plugin } from "obsidian";
 import {
+  type Authentication,
   readCredentials,
   scopedCredentials,
   storeCredentials,
-  type Authentication,
 } from "./auth/credentials";
-import { createRetryLoop, type Outcome } from "./platform/retry";
-import { Context, Effect, Exit, Layer, Scope } from "effect";
-import { Notice, Plugin } from "obsidian";
-import type { SyncEngine } from "./core/engine";
-import { SyncError, attempt, explain, io, retryable } from "./core/errors";
-import {
-  Registration,
-  type Registration as VaultRegistration,
-  checkRoot,
-  decode,
-} from "./core/protocol";
-import { createGitRemote, checkRemote } from "./git/remote";
-import { gitCache } from "./platform/git-cache";
-import { ObsidianVault } from "./platform/vault";
-import { obsidianFetch } from "./platform/http";
-import { commitAuthor, deviceName } from "./platform/device";
-import { hashText } from "./core/hash";
-import type { GitRemote } from "./core/ports";
-import type { RepositoryInspection } from "./ui/setup-types";
 import {
   type Config,
-  type SyncPreferences,
+  connectionChanged,
   defaults,
   loadConfig,
-  connectionChanged,
+  type SyncPreferences,
 } from "./core/config";
-import { GitbinSettings } from "./ui/settings";
-import { HistoryView, historyType } from "./ui/history-view";
-import { createUiStore } from "./ui/store";
+import type { SyncEngine } from "./core/engine";
+import { attempt, explain, io, retryable, SyncError } from "./core/errors";
+import { hashText } from "./core/hash";
+import type { GitRemote } from "./core/ports";
+import {
+  checkRoot,
+  decode,
+  Registration,
+  type Registration as VaultRegistration,
+} from "./core/protocol";
 import {
   GitRemoteService,
   LocalVaultService,
   SyncEngineService,
   syncEngineLayer,
 } from "./core/services";
+import { checkRemote, createGitRemote } from "./git/remote";
+import { commitAuthor, deviceName } from "./platform/device";
+import { gitCache } from "./platform/git-cache";
+import { obsidianFetch } from "./platform/http";
+import { createRetryLoop, type Outcome } from "./platform/retry";
+import { ObsidianVault } from "./platform/vault";
+import { HistoryView, historyType } from "./ui/history-view";
+import { GitbinSettings } from "./ui/settings";
+import type { RepositoryInspection } from "./ui/setup-types";
+import { createUiStore } from "./ui/store";
 import "./styles.css";
-import { exportSetup } from "./auth/setup-transfer";
 import { readSetupCode } from "./auth/setup-code";
-import { SetupImportModal, SetupQrModal } from "./ui/setup-transfer-modal";
-import { ConsolidationModal } from "./ui/consolidation-modal";
+import { exportSetup } from "./auth/setup-transfer";
 import { maintenanceStorage } from "./platform/consolidation";
-import { syncIssue } from "./ui/sync-issue";
 import { pluginActions } from "./ui/actions";
+import { ConsolidationModal } from "./ui/consolidation-modal";
+import { SetupImportModal, SetupQrModal } from "./ui/setup-transfer-modal";
+import { syncIssue } from "./ui/sync-issue";
 
 export default class GitbinPlugin extends Plugin {
   config: Config = defaults();
   readonly ui = createUiStore({ config: this.config, status: "Ready", error: null });
   private settingsTab: GitbinSettings | undefined;
-  private retryLoop = createRetryLoop({
-    run: (manual) => this.backgroundSync(manual),
-    online: () => navigator.onLine,
-    status: (message) => {
-      this.setStatus(message);
-      this.ui.update({ stale: true });
+  private retryScope = Scope.makeUnsafe();
+  private retryLoop = createRetryLoop(
+    {
+      run: (manual) => Effect.promise(() => this.backgroundSync(manual)),
+      online: () => navigator.onLine,
+      status: (message) => {
+        this.setStatus(message);
+        this.ui.update({ stale: true });
+      },
+      random: Math.random,
+      interval: () => (this.config.autoSync ? this.config.remoteCheckInterval : null),
     },
-    random: Math.random,
-    interval: () => (this.config.autoSync ? this.config.remoteCheckInterval : null),
-  });
+    this.retryScope,
+  );
   private lastFailure: unknown;
   private engine: SyncEngine | undefined;
   private engineScope: Scope.Closeable | undefined;
@@ -145,12 +149,13 @@ export default class GitbinPlugin extends Plugin {
     await this.restoreSync();
   }
   private resumeSync(): void {
-    if (this.config.setupComplete && this.config.autoSync) void this.retryLoop.wake();
+    if (this.config.setupComplete && this.config.autoSync)
+      void Effect.runPromise(this.retryLoop.wake());
   }
   private async restoreSync(): Promise<void> {
     if (!this.config.setupComplete || !this.config.remote) return;
     await this.enqueue(() => this.openEngine().pipe(Effect.flatMap(() => this.captureEdits())));
-    this.retryLoop.start();
+    void Effect.runPromise(this.retryLoop.start());
   }
 
   openSettings(): void {
@@ -199,47 +204,33 @@ export default class GitbinPlugin extends Plugin {
       const remote = yield* this.remote(this.config);
       const storage = maintenanceStorage(this.app, this.storage(this.config));
       yield* Effect.sync(() => report("Checking for an unfinished operation…"));
-      const pending = yield* io("Cannot read maintenance recovery checkpoint.", storage.pending);
+      const pending = yield* storage.pending();
       if (
         pending &&
-        (yield* io("Cannot verify pending maintenance.", () =>
-          remote.maintenance.status(pending.expected, pending.revision),
-        )) === "stale"
+        (yield* remote.maintenance.status(pending.expected, pending.revision)) === "stale"
       ) {
-        yield* io("Cannot preserve stale maintenance checkpoint.", storage.discardStale);
+        yield* storage.discardStale();
       } else if (pending) {
-        yield* io(
-          "Cannot finish the previous maintenance. The recovery checkpoint is preserved.",
-          async () => {
-            await remote.maintenance.apply(pending.expected, pending.revision, report);
-            report("Updating local metadata…");
-            await storage.install();
-            await this.finishConsolidation(reinitialize);
-          },
-        );
+        yield* remote.maintenance.apply(pending.expected, pending.revision, report);
+        report("Updating local metadata…");
+        yield* storage.install();
+        yield* io("Cannot finish maintenance.", () => this.finishConsolidation(reinitialize));
         return;
       }
-      const device = yield* io("Cannot read device data for maintenance.", storage.loadDevice);
-      const preview = yield* io("Cannot prepare maintenance. Your repository is unchanged.", () =>
-        remote.maintenance.preview(
-          device,
-          reinitialize
-            ? [...new Set([this.config.root, ...this.config.vaults.map((row) => row.vault.root)])]
-            : undefined,
-          report,
-        ),
+      const device = yield* storage.loadDevice();
+      const preview = yield* remote.maintenance.preview(
+        device,
+        reinitialize
+          ? [...new Set([this.config.root, ...this.config.vaults.map((row) => row.vault.root)])]
+          : undefined,
+        report,
       );
-      yield* io(
-        "Repository maintenance failed. Reopen this action to recover the saved checkpoint.",
-        async () => {
-          report("Saving recovery checkpoint…");
-          await storage.stage(preview);
-          await remote.maintenance.apply(preview.sourceRevision, preview.revision, report);
-          report("Updating local metadata…");
-          await storage.install();
-          await this.finishConsolidation(reinitialize);
-        },
-      );
+      report("Saving recovery checkpoint…");
+      yield* storage.stage(preview);
+      yield* remote.maintenance.apply(preview.sourceRevision, preview.revision, report);
+      report("Updating local metadata…");
+      yield* storage.install();
+      yield* io("Cannot finish maintenance.", () => this.finishConsolidation(reinitialize));
     });
   }
   private async finishConsolidation(reinitialize = false): Promise<void> {
@@ -307,7 +298,7 @@ export default class GitbinPlugin extends Plugin {
 
   private requestSync(): void {
     if (this.config.setupComplete) {
-      void this.retryLoop.request();
+      void Effect.runPromise(this.retryLoop.request());
       return;
     }
     this.openHistory();
@@ -370,7 +361,7 @@ export default class GitbinPlugin extends Plugin {
     window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
     if (!this.config.setupComplete) return;
-    this.retryLoop.start();
+    void Effect.runPromise(this.retryLoop.start());
     if (this.config.pending) this.scheduleUpload();
   }
   private checkConnection(next: Config): void {
@@ -471,10 +462,7 @@ export default class GitbinPlugin extends Plugin {
   });
   private openEngine = Effect.fn("plugin.openEngine")(function* (this: GitbinPlugin) {
     if (this.engine) return this.engine;
-    const pending = yield* io(
-      "Cannot inspect consolidation checkpoint.",
-      maintenanceStorage(this.app, this.storage(this.config)).pending,
-    );
+    const pending = yield* maintenanceStorage(this.app, this.storage(this.config)).pending();
     if (pending)
       return yield* new SyncError({
         message:
@@ -497,7 +485,7 @@ export default class GitbinPlugin extends Plugin {
     return engine;
   });
   async disconnect(): Promise<boolean> {
-    this.retryLoop.stop();
+    await Effect.runPromise(this.retryLoop.stop());
     window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
     const disconnected = await this.enqueue(() =>
@@ -513,7 +501,7 @@ export default class GitbinPlugin extends Plugin {
         this.ui.update({ stale: true });
       }),
     );
-    if (!disconnected && this.config.setupComplete) this.retryLoop.start();
+    if (!disconnected && this.config.setupComplete) void Effect.runPromise(this.retryLoop.start());
     return disconnected;
   }
   savedAuthentication(): Authentication | null {
@@ -582,7 +570,7 @@ export default class GitbinPlugin extends Plugin {
   }
 
   manualSync(): Promise<boolean> {
-    return this.retryLoop.request();
+    return Effect.runPromise(this.retryLoop.request());
   }
 
   synchronize(): Promise<boolean> {
@@ -665,7 +653,7 @@ export default class GitbinPlugin extends Plugin {
     if (!this.config.setupComplete || !this.config.autoSync) return;
     this.uploadTimer = window.setTimeout(() => {
       this.uploadTimer = undefined;
-      void this.retryLoop.wake();
+      void Effect.runPromise(this.retryLoop.wake());
     }, this.config.uploadDelay);
   }
 
@@ -673,7 +661,9 @@ export default class GitbinPlugin extends Plugin {
     this.stopped = true;
     this.consolidationModal?.close();
     this.settingsTab?.dispose();
-    this.retryLoop.stop();
+    void Effect.runPromise(
+      this.retryLoop.stop().pipe(Effect.andThen(Scope.close(this.retryScope, Exit.void))),
+    );
     if (this.captureTimer) window.clearTimeout(this.captureTimer);
     window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;

@@ -1,6 +1,9 @@
 import obsidianmd from "eslint-plugin-obsidianmd";
+import effectRules from "./tooling/effect-rules.mjs";
 
-export default [
+/** @type {import("eslint").Linter.Config[]} */
+const config = [
+  { plugins: { gitbin: effectRules } },
   ...obsidianmd.configs.recommended,
   {
     files: ["src/**/*.{ts,tsx}"],
@@ -14,4 +17,32 @@ export default [
       },
     },
   },
+  {
+    files: [
+      "src/core/engine.ts",
+      "src/maintenance/engine.ts",
+      "src/maintenance/*-references.ts",
+      "src/maintenance/unified-metadata.ts",
+      "src/maintenance/vault-storage.ts",
+      "src/git/remote.ts",
+      "src/git/consolidation.ts",
+      "src/platform/consolidation.ts",
+      "src/platform/retry.ts",
+    ],
+    rules: {
+      "gitbin/effect-exports": [
+        "error",
+        {
+          allow: [
+            "checkRemote",
+            "retryDelay",
+            "createSyncEngine.history",
+            "createSyncEngine.close",
+          ],
+        },
+      ],
+    },
+  },
 ];
+
+export default config;

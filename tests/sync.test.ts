@@ -760,9 +760,9 @@ it("consolidates all vaults and returning devices preserve offline edits without
   work.local.files.set("Work.md", "keep work");
   await run(work.engine.sync());
   const oldHead = (await git(remotePath, ["rev-parse", "main"])).trim();
-  const preview = await left.remote.maintenance.preview();
+  const preview = await Effect.runPromise(left.remote.maintenance.preview());
   expect(preview.vaults).toEqual(["personal", "work"]);
-  await left.remote.maintenance.apply(preview.sourceRevision, preview.revision);
+  await Effect.runPromise(left.remote.maintenance.apply(preview.sourceRevision, preview.revision));
   expect((await git(remotePath, ["rev-list", "--count", "main"])).trim()).toBe("1");
   await run(returning.engine.sync());
   const snapshot = await run(left.remote.read(registration));
@@ -799,11 +799,15 @@ it.each(
   if (scenario === "remote-delete") desktop.local.files.delete("Note.md");
   await run(desktop.engine.sync());
   const before = await run(desktop.remote.read(registration));
-  const preview = await desktop.remote.maintenance.preview(
-    null,
-    operation === "reinitialize" ? [registration.root] : undefined,
+  const preview = await Effect.runPromise(
+    desktop.remote.maintenance.preview(
+      null,
+      operation === "reinitialize" ? [registration.root] : undefined,
+    ),
   );
-  await desktop.remote.maintenance.apply(preview.sourceRevision, preview.revision);
+  await Effect.runPromise(
+    desktop.remote.maintenance.apply(preview.sourceRevision, preview.revision),
+  );
   const compacted = await run(desktop.remote.read(registration));
   for (const [id, bytes] of compacted.states) expect(bytes).not.toEqual(before.states.get(id));
   offline.local.history = null; // Sync correctness must not depend on optional history storage.
@@ -834,8 +838,10 @@ it("consolidation discards retained deleted attachments and shrinks CRDT history
   const before = await run(device.remote.read(registration));
   const paths = await git(remotePath, ["ls-tree", "-r", "--name-only", "main"]);
   expect(paths).toContain("/retained/");
-  const preview = await device.remote.maintenance.preview();
-  await device.remote.maintenance.apply(preview.sourceRevision, preview.revision);
+  const preview = await Effect.runPromise(device.remote.maintenance.preview());
+  await Effect.runPromise(
+    device.remote.maintenance.apply(preview.sourceRevision, preview.revision),
+  );
   const after = await run(device.remote.read(registration));
   expect(after.states.size).toBe(1);
   expect([...after.states.values()].reduce((sum, b) => sum + b.length, 0)).toBeLessThan(

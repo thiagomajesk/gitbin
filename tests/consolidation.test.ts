@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -79,20 +80,22 @@ async function fixture(corrupt = false) {
 it("preview is read-only and publication replaces main with exactly one current root", async () => {
   const f = await fixture();
   const original = git(f.remote, "rev-parse", "main");
-  const preview = await f.service.preview();
+  const preview = await Effect.runPromise(f.service.preview());
   expect(git(f.remote, "rev-parse", "main")).toBe(original);
   expect(git(f.remote, "rev-list", "--count", "main")).toBe("2");
-  await f.service.apply(preview.sourceRevision, preview.revision);
+  await Effect.runPromise(f.service.apply(preview.sourceRevision, preview.revision));
   expect(git(f.remote, "rev-list", "--count", "main")).toBe("1");
   expect(git(f.remote, "show", "main:keep.txt")).toBe("latest");
-  await f.service.apply(preview.sourceRevision, preview.revision);
+  await Effect.runPromise(f.service.apply(preview.sourceRevision, preview.revision));
   expect(git(f.remote, "rev-list", "--count", "main")).toBe("1");
 });
 it("rejects an update racing between final fetch and receive-pack advertisement", async () => {
   const f = await fixture();
-  const preview = await f.service.preview();
+  const preview = await Effect.runPromise(f.service.preview());
   f.race();
-  await expect(f.service.apply(preview.sourceRevision, preview.revision)).rejects.toThrow();
+  await expect(
+    Effect.runPromise(f.service.apply(preview.sourceRevision, preview.revision)),
+  ).rejects.toThrow();
   expect(git(f.remote, "show", "main:race.txt")).toBe("concurrent");
   expect(git(f.remote, "rev-list", "--count", "main")).toBe("3");
 });
@@ -109,8 +112,8 @@ it("checks the exact advertised branch head", async () => {
 
 it("reconciles completed publication after restart and subsequent compatible commits", async () => {
   const f = await fixture();
-  const preview = await f.service.preview();
-  await f.service.apply(preview.sourceRevision, preview.revision);
+  const preview = await Effect.runPromise(f.service.preview());
+  await Effect.runPromise(f.service.apply(preview.sourceRevision, preview.revision));
   git(f.work, "fetch", "origin");
   git(f.work, "reset", "--hard", "origin/main");
   await writeFile(join(f.work, "next.txt"), "later update");
@@ -121,21 +124,25 @@ it("reconciles completed publication after restart and subsequent compatible com
   git(f.work, "push", "origin", "main");
   const current = git(f.remote, "rev-parse", "main");
   const restarted = f.reopen();
-  expect(await restarted.status(preview.sourceRevision, preview.revision)).toBe("complete");
-  await restarted.apply(preview.sourceRevision, preview.revision);
+  expect(await Effect.runPromise(restarted.status(preview.sourceRevision, preview.revision))).toBe(
+    "complete",
+  );
+  await Effect.runPromise(restarted.apply(preview.sourceRevision, preview.revision));
   expect(git(f.remote, "rev-parse", "main")).toBe(current);
   expect(git(f.remote, "rev-list", "--count", "main")).toBe("2");
 });
 
 it("treats a later consolidation as stale even if its files are otherwise unchanged", async () => {
   const f = await fixture();
-  const first = await f.service.preview();
-  await f.service.apply(first.sourceRevision, first.revision);
-  const second = await f.service.preview();
+  const first = await Effect.runPromise(f.service.preview());
+  await Effect.runPromise(f.service.apply(first.sourceRevision, first.revision));
+  const second = await Effect.runPromise(f.service.preview());
   expect(second.migrations).toEqual([]);
   expect(second.consolidationHash).not.toBe(first.consolidationHash);
-  await f.service.apply(second.sourceRevision, second.revision);
-  expect(await f.service.status(first.sourceRevision, first.revision)).toBe("stale");
+  await Effect.runPromise(f.service.apply(second.sourceRevision, second.revision));
+  expect(await Effect.runPromise(f.service.status(first.sourceRevision, first.revision))).toBe(
+    "stale",
+  );
   expect(git(f.remote, "rev-list", "--count", "main")).toBe("1");
 });
 
@@ -147,11 +154,11 @@ it("reinitializes corrupt metadata and state without changing ordinary committed
       .split("\n")
       .filter((line) => !line.split("\t")[1]?.startsWith(".gitbin/"));
   const before = ordinary("main");
-  await expect(f.service.preview()).rejects.toThrow();
-  const preview = await f.service.preview(null, ["personal"]);
+  await expect(Effect.runPromise(f.service.preview())).rejects.toThrow();
+  const preview = await Effect.runPromise(f.service.preview(null, ["personal"]));
   expect(git(f.remote, "rev-parse", "main")).toBe(original);
   expect(preview.vaults).toEqual(["personal", "work"]);
-  await f.service.apply(preview.sourceRevision, preview.revision);
+  await Effect.runPromise(f.service.apply(preview.sourceRevision, preview.revision));
   expect(ordinary("main")).toEqual(before);
   expect(git(f.remote, "rev-list", "--count", "main")).toBe("1");
   expect(git(f.remote, "log", "-1", "--format=%s")).toBe("gitbin: reinitialize repository");
@@ -160,12 +167,14 @@ it("reinitializes corrupt metadata and state without changing ordinary committed
   expect(paths).not.toContain(".gitbin/format");
   expect(paths).toContain(".gitbin/vaults/personal/attachments/");
   expect(paths).toContain(".gitbin/vaults/work/notes/");
-  expect((await f.service.preview()).migrations).toEqual([]);
+  expect((await Effect.runPromise(f.service.preview())).migrations).toEqual([]);
 });
 it("rejects concurrent publication during reinitialization", async () => {
   const f = await fixture(true);
-  const preview = await f.service.preview(null, ["personal"]);
+  const preview = await Effect.runPromise(f.service.preview(null, ["personal"]));
   f.race();
-  await expect(f.service.apply(preview.sourceRevision, preview.revision)).rejects.toThrow();
+  await expect(
+    Effect.runPromise(f.service.apply(preview.sourceRevision, preview.revision)),
+  ).rejects.toThrow();
   expect(git(f.remote, "show", "main:race.txt")).toBe("concurrent");
 });
