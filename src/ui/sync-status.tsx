@@ -1,7 +1,7 @@
-import { useId, useState, useSyncExternalStore } from "react";
 import { LoaderCircle, RefreshCw } from "lucide-react";
-import type { SyncActions, UiSnapshot } from "./store";
+import { useId, useState, useSyncExternalStore } from "react";
 import { IconButton } from "./icon-button";
+import type { SyncActions, UiSnapshot } from "./store";
 
 function syncState(snapshot: UiSnapshot): string {
   if (!snapshot.config.setupComplete) return "Not connected";
@@ -79,9 +79,8 @@ export function SyncStatus({ actions }: { readonly actions: SyncActions }) {
   const snapshot = useSyncExternalStore(actions.store.subscribe, actions.store.getSnapshot);
   const manual = useManualSync(actions);
   const busy = manual.pending || snapshot.status === "Syncing…";
-  const current = snapshot.vaults?.find((row) => row.connected);
   const status = manual.error && !snapshot.error ? "Last sync failed" : syncState(snapshot);
-  const statusInfo = snapshot.issue?.message ?? snapshot.error ?? manual.error;
+  const statusInfo = statusDescription(snapshot, manual.error);
   const blocked = syncBlocked(snapshot);
   return (
     <section aria-labelledby={headingId} className="setting-group gitbin-sync-status">
@@ -108,28 +107,37 @@ export function SyncStatus({ actions }: { readonly actions: SyncActions }) {
       <div className="setting-items gitbin:grid gitbin:gap-[var(--size-4-4)] gitbin:p-[var(--size-4-5)]">
         <dl className="gitbin-summary">
           <StatusRow status={status} info={statusInfo} warning={blocked} />
-          {snapshot.config.setupComplete ? (
-            <>
-              <div className="gitbin-sync-status-group">
-                <dt>Current remote commit</dt>
-                <dd>
-                  <code>{current?.latest?.slice(0, 8) ?? "Not verified"}</code>
-                </dd>
-                <dt>Current local commit</dt>
-                <dd>
-                  <code>{snapshot.config.lastRevision?.slice(0, 8) ?? "Not verified"}</code>
-                </dd>
-              </div>
-              <div className="gitbin-sync-status-group">
-                <dt>Last synced</dt>
-                <dd>{time(snapshot.config.lastSync)}</dd>
-                <dt>Last checked</dt>
-                <dd>{time(snapshot.checkedAt)}</dd>
-              </div>
-            </>
-          ) : null}
+          {snapshot.config.setupComplete ? <SyncDetails snapshot={snapshot} /> : null}
         </dl>
       </div>
     </section>
   );
+}
+
+function SyncDetails({ snapshot }: { readonly snapshot: UiSnapshot }) {
+  const current = snapshot.vaults?.find((row) => row.connected);
+  return (
+    <>
+      <div className="gitbin-sync-status-group">
+        <dt>Current remote commit</dt>
+        <dd>
+          <code>{current?.latest?.slice(0, 8) ?? "Not verified"}</code>
+        </dd>
+        <dt>Current local commit</dt>
+        <dd>
+          <code>{snapshot.config.lastRevision?.slice(0, 8) ?? "Not verified"}</code>
+        </dd>
+      </div>
+      <div className="gitbin-sync-status-group">
+        <dt>Last synced</dt>
+        <dd>{time(snapshot.config.lastSync)}</dd>
+        <dt>Last checked</dt>
+        <dd>{time(snapshot.checkedAt)}</dd>
+      </div>
+    </>
+  );
+}
+
+function statusDescription(snapshot: UiSnapshot, manualError: string | null): string | null {
+  return snapshot.issue?.message ?? snapshot.error ?? manualError;
 }

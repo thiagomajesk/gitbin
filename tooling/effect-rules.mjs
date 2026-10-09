@@ -1,4 +1,5 @@
 import ts from "typescript";
+import functionSize from "./function-size.mjs";
 
 function isEffect(type) {
   if (type.isUnion()) return type.types.every(isEffect);
@@ -107,7 +108,7 @@ const effectExports = {
     };
   },
 };
-export default { rules: { "effect-exports": effectExports } };
+export default { rules: { "effect-exports": effectExports, "function-size": functionSize } };
 
 function accepted(type, path, allowed, seen) {
   return allowed.has(path) || isEffect(type) || isLayer(type) || seen.has(type);

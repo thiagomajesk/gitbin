@@ -1,20 +1,19 @@
-import { reconcileConsolidation, captureRebasedEdit } from "./reconcile";
-import type { CheckpointFile } from "./checkpoint";
-import { currentMetadata } from "./metadata";
-import { decodeJournal } from "./storage-format";
-import { contentEqual, type FileContent } from "./content";
 import { Effect } from "effect";
-import { SyncError, attempt } from "./errors";
 import { BinaryObjects } from "./blobs";
+import type { CheckpointFile } from "./checkpoint";
+import { contentEqual, type FileContent } from "./content";
+import { attempt, SyncError } from "./errors";
 import { FileDocument } from "./file";
 import {
-  HistoryState,
   emptyHistory,
+  type HistoryEntry,
+  HistoryState,
   recordHistory,
   snapshotFiles,
   snapshotUpdates,
-  type HistoryEntry,
 } from "./history";
+import { currentMetadata } from "./metadata";
+import type { GitRemote, LocalVault, RemoteSnapshot, SyncResult } from "./ports";
 import {
   attachFile,
   captureExisting,
@@ -23,8 +22,9 @@ import {
   projectFiles,
   validateRemote,
 } from "./projection";
-import type { GitRemote, LocalVault, RemoteSnapshot, SyncResult } from "./ports";
-import { type Registration, type WriteIntent, decode, validPath, validateVaults } from "./protocol";
+import { decode, type Registration, validateVaults, validPath, type WriteIntent } from "./protocol";
+import { captureRebasedEdit, reconcileConsolidation } from "./reconcile";
+import { decodeJournal } from "./storage-format";
 
 export interface SyncEngine {
   readonly vault: Registration;
@@ -223,6 +223,34 @@ export function createSyncEngine(
     yield* persist();
   });
 
+  const saveHistory = Effect.fn(function* (
+    localBefore: ReadonlyArray<import("./history").FileSnapshot>,
+    incoming: ReadonlyArray<import("./history").FileSnapshot>,
+    revision: string | null,
+  ) {
+    const nextHistory = recordHistory(
+      history,
+      localBefore,
+      incoming,
+      snapshotFiles(states.values()),
+      revision,
+    );
+    historyDirty ||= nextHistory !== history;
+    history = nextHistory;
+    const historyWarning = historyDirty
+      ? yield* local.saveHistory(history).pipe(
+          Effect.map(() => {
+            historyDirty = false;
+            return null;
+          }),
+          Effect.catch(() =>
+            Effect.succeed("Sync completed, but its local history could not be saved."),
+          ),
+        )
+      : null;
+    return historyWarning;
+  });
+
   const sync = Effect.fn("engine.sync")(function* (): Effect.fn.Return<SyncResult, SyncError> {
     yield* initialize();
     yield* capture();
@@ -265,26 +293,7 @@ export function createSyncEngine(
           hash,
         }));
         yield* persist();
-        const nextHistory = recordHistory(
-          history,
-          localBefore,
-          incoming,
-          snapshotFiles(states.values()),
-          published.revision,
-        );
-        historyDirty ||= nextHistory !== history;
-        history = nextHistory;
-        const historyWarning = historyDirty
-          ? yield* local.saveHistory(history).pipe(
-              Effect.map(() => {
-                historyDirty = false;
-                return null;
-              }),
-              Effect.catch(() =>
-                Effect.succeed("Sync completed, but its local history could not be saved."),
-              ),
-            )
-          : null;
+        const historyWarning = yield* saveHistory(localBefore, incoming, published.revision);
         return { published: true, revision: published.revision, historyWarning };
       }
     }

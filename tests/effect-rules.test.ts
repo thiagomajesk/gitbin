@@ -1,8 +1,8 @@
-import config from "../eslint.config.mjs";
 import { ESLint } from "eslint";
 import { expect, it } from "vitest";
+import effectRules from "../tooling/effect-rules.mjs";
 
-const linter = new ESLint({ overrideConfigFile: true, overrideConfig: config });
+const linter = new ESLint();
 async function contractErrors(code: string) {
   const [result] = await linter.lintText(code, { filePath: "src/git/consolidation.ts" });
   return result?.messages.filter((message) => message.ruleId === "gitbin/effect-exports") ?? [];
@@ -30,4 +30,27 @@ it.each([
 ])("rejects operations that escape the Effect contract: %s", async (code) => {
   const errors = await contractErrors('import { Effect } from "effect";\n' + code);
   expect(errors.length).toBeGreaterThan(0);
+});
+
+it("rejects long function bodies without counting comments or nested callbacks twice", async () => {
+  const sizeLinter = new ESLint({
+    overrideConfigFile: true,
+    overrideConfig: {
+      plugins: { gitbin: effectRules },
+      rules: { "gitbin/function-size": ["error", 6] },
+    },
+  });
+  const errors = async (code: string) => {
+    const [result] = await sizeLinter.lintText(code, { filePath: "fixture.mjs" });
+    return result?.messages ?? [];
+  };
+  expect(
+    await errors(`function work() {\nlet a = 1;\na++;\na++;\na++;\na++;\nreturn a;\n}`),
+  ).toHaveLength(1);
+  expect(
+    await errors(
+      `function suite() {\nfunction first() {\nreturn 1;\n}\nfunction second() {\nreturn 2;\n}\n}`,
+    ),
+  ).toEqual([]);
+  expect(await errors(`function work() {\n// comment\n\nreturn 1;\n}`)).toEqual([]);
 });

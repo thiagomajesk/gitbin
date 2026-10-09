@@ -1,7 +1,7 @@
-import { FileDocument } from "./file";
-import { BinaryObjects } from "./blobs";
-import { contentHash, contentEqual, type FileContent } from "./content";
+import type { BinaryObjects } from "./blobs";
 import type { CheckpointFile } from "./checkpoint";
+import { contentEqual, contentHash, type FileContent } from "./content";
+import { FileDocument } from "./file";
 import type { RemoteSnapshot } from "./ports";
 
 function pathOf(file: FileDocument): string | null {
@@ -51,6 +51,25 @@ function replay(
   }
   return remote ? replayPresent(local, remote, base, blobs) : copyLocal(local, blobs);
 }
+function preserveBaseline(
+  local: FileDocument,
+  owner: FileDocument | undefined,
+  next: Map<string, FileDocument>,
+  blobs: BinaryObjects,
+): void {
+  if (owner) {
+    owner.baselinePath = local.baselinePath;
+    owner.baselineContent = local.baselineContent;
+    // The on-disk bytes remain the baseline until the next materialization.
+    owner.baselineState = null;
+  } else if (local.baselinePath !== null) {
+    const removed = new FileDocument(local.id, undefined, blobs);
+    removed.move(null);
+    removed.baselinePath = local.baselinePath;
+    removed.baselineContent = local.baselineContent;
+    next.set(removed.id, removed);
+  }
+}
 /** Never merge Yjs updates from before a history reset into the new documents. */
 export function reconcileConsolidation(
   states: ReadonlyMap<string, FileDocument>,
@@ -73,19 +92,7 @@ export function reconcileConsolidation(
       const remote = incoming.get(local.id) ?? (base?.path ? byPath.get(base.path) : undefined);
       const extra = replay(local, remote, baseline.get(local.id), blobs);
       if (extra) next.set(extra.id, extra);
-      const owner = extra ?? remote;
-      if (owner) {
-        owner.baselinePath = local.baselinePath;
-        owner.baselineContent = local.baselineContent;
-        // The on-disk bytes remain the baseline until the next materialization.
-        owner.baselineState = null;
-      } else if (local.baselinePath !== null) {
-        const removed = new FileDocument(local.id, undefined, blobs);
-        removed.move(null);
-        removed.baselinePath = local.baselinePath;
-        removed.baselineContent = local.baselineContent;
-        next.set(removed.id, removed);
-      }
+      preserveBaseline(local, extra ?? remote, next, blobs);
     }
     return next;
   } catch (error) {

@@ -1,14 +1,14 @@
-import { statePath } from "../core/storage-layout";
-import { currentMetadata, metadataPath, requireCurrentMetadata } from "../core/metadata";
-import { parseStoredData } from "../core/storage-format";
-import { binaryObject, blobId } from "../core/blobs";
-import { validateRemote } from "../core/projection";
-import { contentFromBytes, contentBytes, type FileContent } from "../core/content";
-import { readBlob, readCommit, flattenTree, buildCommit } from "just-git/repo";
 import type { GitRepo } from "just-git";
-import type { Connection } from "./session";
+import { buildCommit, flattenTree, readBlob, readCommit } from "just-git/repo";
+import { binaryObject, blobId } from "../core/blobs";
+import { contentBytes, contentFromBytes, type FileContent } from "../core/content";
+import { currentMetadata, metadataPath, requireCurrentMetadata } from "../core/metadata";
 import type { Publication, RemoteSnapshot } from "../core/ports";
+import { validateRemote } from "../core/projection";
 import { type Registration, validateVaults, validPath } from "../core/protocol";
+import { parseStoredData } from "../core/storage-format";
+import { statePath } from "../core/storage-layout";
+import type { Connection } from "./session";
 export async function readEntries(repo: GitRepo, revision: string, vault: Registration) {
   const commit = await readCommit(repo, revision);
   const entries = await flattenTree(repo, commit.tree);
@@ -117,17 +117,7 @@ export async function candidate(
   const files = Object.create(null) as Record<string, string | Uint8Array | null>;
   files[metadataPath] = JSON.stringify(currentMetadata(base.consolidationHash ?? null));
   Object.assign(files, binaryChanges(base, publication));
-  for (const [id, bytes] of base.states) files[statePath(publication.vault.root, id, bytes)] = null;
-  for (const [id, bytes] of publication.states) {
-    if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid file ID.");
-    files[statePath(publication.vault.root, id, bytes)] = bytes;
-  }
-  for (const [path, text] of publication.files) {
-    if (!validPath(path)) throw new Error("Unsafe file path.");
-    files[`${publication.vault.root}/${path}`] = contentBytes(text);
-  }
-  for (const path of base.files.keys())
-    if (!publication.files.has(path)) files[`${publication.vault.root}/${path}`] = null;
+  applyFileChanges(files, base, publication);
   if (base.revision) await repo.refStore.writeRef("refs/heads/main", base.revision);
   else await repo.refStore.deleteRef("refs/heads/main");
   const built = await buildCommit(repo, {
@@ -143,4 +133,22 @@ export async function candidate(
   )
     return base.revision;
   return built.hash;
+}
+
+function applyFileChanges(
+  files: Record<string, string | Uint8Array | null>,
+  base: RemoteSnapshot,
+  publication: Publication,
+): void {
+  for (const [id, bytes] of base.states) files[statePath(publication.vault.root, id, bytes)] = null;
+  for (const [id, bytes] of publication.states) {
+    if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("Invalid file ID.");
+    files[statePath(publication.vault.root, id, bytes)] = bytes;
+  }
+  for (const [path, text] of publication.files) {
+    if (!validPath(path)) throw new Error("Unsafe file path.");
+    files[`${publication.vault.root}/${path}`] = contentBytes(text);
+  }
+  for (const path of base.files.keys())
+    if (!publication.files.has(path)) files[`${publication.vault.root}/${path}`] = null;
 }

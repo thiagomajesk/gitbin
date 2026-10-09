@@ -13,3 +13,6 @@ Effect contracts:
 - Execute Effects only at declared application boundaries (the plugin entry point and the setup modal's UI event adapter). Fallow enforces this boundary. New boundaries require a documented reason.
 - The sync engine's synchronous history read and CRDT disposer are explicit existing contract exceptions; the latter is owned by its Effect service scope.
 - Effect tests should use @effect/vitest, scoped fixtures and TestClock for Effect-managed time. React/browser tests and raw external adapter tests can use ordinary Vitest.
+
+Quality limits:
+- Source functions must stay within cyclomatic complexity 10, cognitive complexity 15, and 60 token-bearing lines per function (nested function bodies are counted separately). CRAP is capped at 30 using Fallow's estimate, not measured test coverage.

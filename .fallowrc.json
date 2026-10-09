@@ -8,6 +8,10 @@
     "enabled": true
   },
   "health": {
+    "maxCyclomatic": 10,
+    "maxCognitive": 15,
+    "maxUnitSize": 60,
+    "maxCrap": 30,
     "ignore": ["tests/**"]
   },
   "duplicates": {

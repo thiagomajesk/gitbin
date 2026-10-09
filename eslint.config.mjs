@@ -1,13 +1,13 @@
 import obsidianmd from "eslint-plugin-obsidianmd";
 import effectRules from "./tooling/effect-rules.mjs";
 
-/** @type {import("eslint").Linter.Config[]} */
-const config = [
+export default [
   { plugins: { gitbin: effectRules } },
   ...obsidianmd.configs.recommended,
   {
     files: ["src/**/*.{ts,tsx}"],
     rules: {
+      "gitbin/function-size": ["error", 60],
       "obsidianmd/ui/sentence-case": ["warn", { brands: ["Gitbin"], acronyms: ["QR"] }],
     },
     languageOptions: {
@@ -44,5 +44,3 @@ const config = [
     },
   },
 ];
-
-export default config;

@@ -1,24 +1,24 @@
 import {
+  DEFAULT_VIRTUAL_FILE_METRICS,
+  type DiffFileInput,
+  type FileContents,
+  parseDiffFromFile,
+  registerCustomCSSVariableTheme,
+} from "@pierre/diffs";
+import { MultiFileDiff, useVirtualizer, Virtualizer } from "@pierre/diffs/react";
+import { FileText, FoldVertical, GitMerge, HardDrive, Server, UnfoldVertical } from "lucide-react";
+import {
+  type ReactNode,
   useCallback,
   useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
-import { FileText, HardDrive, Server, GitMerge, UnfoldVertical, FoldVertical } from "lucide-react";
-import {
-  registerCustomCSSVariableTheme,
-  DEFAULT_VIRTUAL_FILE_METRICS,
-  parseDiffFromFile,
-  type FileContents,
-  type DiffFileInput,
-} from "@pierre/diffs";
-import { MultiFileDiff, Virtualizer, useVirtualizer } from "@pierre/diffs/react";
 import type { FileChange, FileSnapshot } from "../core/history";
-import { orderedChanges, type HistorySelection } from "./sync-history";
 import { Button } from "./controls";
+import { type HistorySelection, orderedChanges } from "./sync-history";
 
 registerCustomCSSVariableTheme("gitbin-obsidian", {
   foreground: "var(--text-normal)",
@@ -103,22 +103,7 @@ function DiffPreview({
     const diff = parseDiffFromFile(files.oldFile, files.newFile);
     return diff.hunks.reduce((total, hunk) => total + hunk.unifiedLineCount, 0) > 50;
   }, [files.oldFile, files.newFile]);
-  const content = (
-    <MultiFileDiff
-      {...files}
-      metrics={diffMetrics}
-      options={{
-        theme: "gitbin-obsidian",
-        diffStyle: "unified",
-        overflow: "wrap",
-        disableFileHeader: true,
-        lineDiffType: "word",
-        hunkSeparators: "line-info-basic",
-        expansionLineCount: 20,
-        onPostRender: measure,
-      }}
-    />
-  );
+  const content = <DiffContent files={files} measure={measure} />;
   return (
     <>
       <div className="gitbin-diff-label">
@@ -340,5 +325,30 @@ export function FileHistory({ selection }: { readonly selection: HistorySelectio
     >
       <SyncDiffContent selection={selection} />
     </Virtualizer>
+  );
+}
+
+function DiffContent({
+  files,
+  measure,
+}: {
+  readonly files: DiffFileInput;
+  readonly measure: () => void;
+}) {
+  return (
+    <MultiFileDiff
+      {...files}
+      metrics={diffMetrics}
+      options={{
+        theme: "gitbin-obsidian",
+        diffStyle: "unified",
+        overflow: "wrap",
+        disableFileHeader: true,
+        lineDiffType: "word",
+        hunkSeparators: "line-info-basic",
+        expansionLineCount: 20,
+        onPostRender: measure,
+      }}
+    />
   );
 }
