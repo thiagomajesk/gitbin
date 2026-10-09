@@ -45,6 +45,8 @@ function actions(): SetupActions {
     store: createUiStore({ config: defaults(), status: "Ready", error: null }),
     savedAuthentication: () => null,
     scanToSync: vi.fn(),
+    consolidate: () => {},
+    reinitialize: () => {},
     saveSyncPreferences: vi.fn(),
     disconnect: vi.fn(),
     synchronize: vi.fn(),

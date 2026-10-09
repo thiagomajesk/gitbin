@@ -15,6 +15,8 @@ function setup(vaults: RepositoryInspection["vaults"] = []) {
   return {
     vaultName: "My Notes",
     scanToSync: vi.fn(),
+    consolidate: () => {},
+    reinitialize: () => {},
     saveSyncPreferences: vi.fn(async (preferences) => {
       store.update({ config: { ...store.getSnapshot().config, ...preferences } });
       return true;
@@ -363,5 +365,6 @@ it("saves automatic sync preferences and disables delay controls in manual mode"
     "Repository",
     "Automatic sync",
     "Sync status",
+    "Maintenance",
   ]);
 });

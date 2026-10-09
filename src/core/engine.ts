@@ -1,6 +1,11 @@
+import { reconcileConsolidation, captureRebasedEdit } from "./reconcile";
+import type { CheckpointFile } from "./checkpoint";
+import { currentMetadata } from "./metadata";
+import { decodeJournal } from "./storage-format";
 import { contentEqual, type FileContent } from "./content";
 import { Effect } from "effect";
 import { SyncError, attempt } from "./errors";
+import { BinaryObjects } from "./blobs";
 import { FileDocument } from "./file";
 import {
   HistoryState,
@@ -19,14 +24,7 @@ import {
   validateRemote,
 } from "./projection";
 import type { GitRemote, LocalVault, RemoteSnapshot, SyncResult } from "./ports";
-import {
-  Journal,
-  type Registration,
-  type WriteIntent,
-  decode,
-  validPath,
-  validateVaults,
-} from "./protocol";
+import { type Registration, type WriteIntent, decode, validPath, validateVaults } from "./protocol";
 
 export interface SyncEngine {
   readonly vault: Registration;
@@ -44,36 +42,72 @@ export function createSyncEngine(
   remote: GitRemote,
 ): SyncEngine {
   const states = new Map<string, FileDocument>();
+  const blobs = new BinaryObjects();
   let intents: ReadonlyArray<WriteIntent> = [];
   let history = emptyHistory();
   let historyDirty = false;
+  let consolidationHash: string | null = null;
+  let checkpoint: readonly CheckpointFile[] | null = null;
 
   const open = Effect.fn("engine.open")(function* () {
     const savedHistory = yield* local.loadHistory();
     if (savedHistory !== null) history = yield* decode(HistoryState, savedHistory);
     const raw = yield* local.load();
     if (raw === null) return;
-    const journal = yield* decode(Journal, raw);
+    const journal = yield* decodeJournal(raw);
     if (journal.vaultRoot !== vault.root)
       return yield* new SyncError({
         message:
           "This local journal belongs to a different vault. Restore the previous connection before changing the vault name.",
       });
+    consolidationHash = journal.metadata.consolidationHash;
+    checkpoint = journal.checkpoint;
+    const savedBlobs = yield* local.loadBlobs(journal.blobs);
     yield* attempt("Cannot restore the local CRDT journal.", () => {
+      blobs.import(savedBlobs);
       for (const stored of journal.files) {
         if (states.has(stored.id)) throw new Error("Duplicate file ID.");
-        states.set(stored.id, new FileDocument(stored.id, stored));
+        states.set(stored.id, new FileDocument(stored.id, stored, blobs));
       }
-      intents = journal.intents;
+      intents = journal.intents.map((intent) => ({
+        ...intent,
+        before: blobs.resolve(intent.before),
+        after: blobs.resolve(intent.after),
+      }));
     });
   });
 
-  const persist = () =>
-    local.save({
-      vaultRoot: vault.root,
-      files: Array.from(states.values(), (file) => file.stored()),
-      intents: intents,
+  const persist = Effect.fn("engine.persist")(function* () {
+    const journal = yield* attempt("Cannot prepare the local journal.", () => {
+      const files = Array.from(states.values(), (file) => file.stored());
+      const savedIntents = intents.map((intent) => ({
+        path: intent.path,
+        before: blobs.retain(intent.before),
+        after: blobs.retain(intent.after),
+      }));
+      const ids = new Set(Array.from(states.values()).flatMap((file) => file.binaryIds(true)));
+      for (const content of [
+        ...files.map((file) => file.baselineContent),
+        ...savedIntents.flatMap((intent) => [intent.before, intent.after]),
+      ])
+        if (content?.type === "binary-ref") ids.add(content.value);
+      return {
+        metadata: currentMetadata(consolidationHash),
+        checkpoint,
+        vaultRoot: vault.root,
+        blobs: [...ids],
+        files,
+        intents: savedIntents,
+      };
     });
+    const retained = yield* attempt("Missing journal binary content.", () =>
+      blobs.select(journal.blobs),
+    );
+    // Durably save bytes before publishing references in the recoverable journal.
+    yield* local.saveBlobs(retained);
+    yield* local.save(journal);
+    blobs.retainOnly(journal.blobs);
+  });
 
   const recover = Effect.fn("engine.recover")(function* () {
     for (const intent of intents) {
@@ -104,9 +138,11 @@ export function createSyncEngine(
     const files = yield* local.scan();
     yield* attempt("Could not capture saved vault edits.", () => {
       const tracked = new Set(Array.from(states.values(), (file) => file.baselinePath));
-      for (const file of states.values()) captureExisting(file, files);
+      for (const file of Array.from(states.values())) {
+        if (!captureRebasedEdit(file, files, states, blobs)) captureExisting(file, files);
+      }
       for (const [path, text] of files) {
-        if (!tracked.has(path)) attachFile(states, path, text);
+        if (!tracked.has(path)) attachFile(states, path, text, blobs);
       }
     });
     yield* persist();
@@ -137,9 +173,25 @@ export function createSyncEngine(
   const integrate = (snapshot: RemoteSnapshot): void => {
     validateVaults([...snapshot.vaults.filter((entry) => entry.root !== vault.root), vault]);
     validateRemote(snapshot);
+    blobs.import(snapshot.blobs ?? new Map());
+    if (consolidationHash !== (snapshot.consolidationHash ?? null)) {
+      const rebased = reconcileConsolidation(states, snapshot, checkpoint, blobs);
+      for (const file of states.values()) file.destroy();
+      states.clear();
+      for (const [id, file] of rebased) states.set(id, file);
+      checkpoint = snapshotUpdates(snapshot.states, blobs).map(({ id, path, hash }) => ({
+        id,
+        path,
+        hash,
+      }));
+      history = emptyHistory();
+      historyDirty = true;
+      consolidationHash = snapshot.consolidationHash ?? null;
+      return;
+    }
     // Validate the entire projection before mutating local documents.
     for (const [id, update] of snapshot.states) {
-      const file = states.get(id) ?? new FileDocument(id);
+      const file = states.get(id) ?? new FileDocument(id, undefined, blobs);
       file.merge(update);
       states.set(id, file);
     }
@@ -177,21 +229,42 @@ export function createSyncEngine(
     const localBefore = snapshotFiles(states.values());
     for (let retry = 0; retry < 5; retry++) {
       const snapshot = yield* remote.read(vault);
-      const incoming = snapshotUpdates(snapshot.states);
+      const incomingBlobs = new BinaryObjects();
+      const incoming = yield* attempt("Cannot read remote history.", () => {
+        incomingBlobs.import(snapshot.blobs ?? new Map());
+        return snapshotUpdates(snapshot.states, incomingBlobs);
+      });
       yield* attempt("Cannot merge the remote vault.", () => integrate(snapshot));
       const projection = yield* attempt("Cannot project the merged vault.", () =>
         projectFiles(states.values()),
       );
       yield* persist();
       yield* materialize(projection.files);
+      for (const [id, file] of states) {
+        if (
+          !snapshot.states.has(id) &&
+          file.locations().every(([, location]) => location.path === null)
+        ) {
+          file.destroy();
+          states.delete(id);
+        }
+      }
+      yield* persist();
       if (states.size === 0)
         return { published: true, revision: snapshot.revision, historyWarning: null };
       const published = yield* remote.publish(snapshot, {
         vault: vault,
         states: new Map(Array.from(states, ([id, file]) => [id, file.bytes()])),
         files: projection.files,
+        blobs: blobs.select(Array.from(states.values()).flatMap((file) => file.binaryIds())),
       });
       if (published.published) {
+        checkpoint = snapshotFiles(states.values()).map(({ id, path, hash }) => ({
+          id,
+          path,
+          hash,
+        }));
+        yield* persist();
         const nextHistory = recordHistory(
           history,
           localBefore,

@@ -5,6 +5,8 @@ export const pluginActions = (plugin: GitbinPlugin): SetupActions => ({
   saveSyncPreferences: (preferences) => plugin.saveSyncPreferences(preferences),
   vaultName: plugin.app.vault.getName(),
   scanToSync: () => plugin.scanToSync(),
+  consolidate: () => plugin.consolidate(),
+  reinitialize: () => plugin.reinitialize(),
   savedAuthentication: () => plugin.savedAuthentication(),
   disconnect: () => plugin.disconnect(),
   inspect: (connection) => plugin.inspectRepository(connection),

@@ -133,6 +133,7 @@ export class SetupImportModal extends Modal {
     super(app);
   }
   override onOpen(): void {
+    this.modalEl.classList.add("gitbin-import-modal");
     this.setTitle("Enter the six-digit code");
     this.contentEl.createEl("p", { text: "Use the code shown below the QR on your desktop." });
     const input = new TextComponent(this.contentEl).setPlaceholder("000000");

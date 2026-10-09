@@ -44,9 +44,12 @@ it("indexes without mounting and follows the native row render/cleanup lifecycle
   host.empty = () => host.replaceChildren();
   host.removeClass = (...names) => host.classList.remove(...names);
   host.className = "setting-item";
-  document.body.append(host);
+  const listEl = document.createElement("div");
+  listEl.addClass = (...names) => listEl.classList.add(...names);
+  listEl.append(host);
+  document.body.append(listEl);
   const render = () => {
-    const dispose = definition.render(new Setting(host), {} as SettingGroup);
+    const dispose = definition.render(new Setting(host), { listEl } as unknown as SettingGroup);
     if (typeof dispose !== "function") throw new Error("Missing row cleanup");
     return dispose;
   };
@@ -54,6 +57,7 @@ it("indexes without mounting and follows the native row render/cleanup lifecycle
   act(() => {
     cleanup = render();
   });
+  expect(listEl.classList.contains("gitbin-settings-host")).toBe(true);
   expect(host.querySelector("input")).not.toBeNull();
   expect(host.classList.contains("setting-item")).toBe(false);
   act(() => cleanup());
@@ -67,5 +71,5 @@ it("indexes without mounting and follows the native row render/cleanup lifecycle
   expect(host.childElementCount).toBe(0);
   act(() => cleanup());
   expect(lifecycle.disposed).toHaveBeenCalledTimes(2);
-  host.remove();
+  listEl.remove();
 });

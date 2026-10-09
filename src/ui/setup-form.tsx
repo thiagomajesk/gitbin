@@ -1,6 +1,6 @@
 import { LoaderCircle, Plug, Unplug, QrCode } from "lucide-react";
 import { useId } from "react";
-import { Form } from "./controls";
+import { Button, Form } from "./controls";
 import { IconButton } from "./icon-button";
 import { TextField } from "./components";
 import type { SetupActions } from "./setup-types";
@@ -101,6 +101,41 @@ export function SetupForm({ actions }: { readonly actions: SetupActions }) {
       ) : null}
       <SyncPreferencesForm actions={actions} />
       <SyncStatus actions={actions} />
+      {state.connected ? (
+        <section className="setting-group">
+          <div className="gitbin-settings-header">
+            <h3 className="setting-item-heading">Maintenance</h3>
+          </div>
+          <div className="setting-items">
+            <div className="setting-item">
+              <div className="setting-item-info">
+                <div className="setting-item-name">Consolidate repository</div>
+                <div className="setting-item-description">
+                  Clear accumulated history to keep your repository lean and easier to maintain.
+                </div>
+              </div>
+              <div className="setting-item-control">
+                <Button type="button" disabled={state.busy} onClick={() => actions.consolidate()}>
+                  Consolidate
+                </Button>
+              </div>
+            </div>
+            <div className="setting-item">
+              <div className="setting-item-info">
+                <div className="setting-item-name">Reinitialize repository</div>
+                <div className="setting-item-description">
+                  Repair damaged sync data so your vaults can sync again.
+                </div>
+              </div>
+              <div className="setting-item-control">
+                <Button type="button" disabled={state.busy} onClick={() => actions.reinitialize()}>
+                  Reinitialize
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

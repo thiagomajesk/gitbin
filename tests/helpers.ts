@@ -6,6 +6,23 @@ import type { HistoryState } from "../src/core/history";
 import { type FileContent, textContent, contentEqual } from "../src/core/content";
 
 export class MemoryVault implements LocalVault {
+  readonly blobs = new Map<string, FileContent>();
+  loadBlobs = (ids: readonly string[]) =>
+    Effect.try({
+      try: () =>
+        new Map(
+          ids.map((id) => {
+            const content = this.blobs.get(id);
+            if (!content) throw new Error("Missing blob");
+            return [id, content] as const;
+          }),
+        ),
+      catch: (cause) => new SyncError({ message: "Cannot load blobs", cause }),
+    });
+  saveBlobs = (blobs: ReadonlyMap<string, FileContent>): Effect.Effect<void, SyncError> =>
+    Effect.sync(() => {
+      for (const [id, content] of blobs) this.blobs.set(id, content);
+    });
   readonly files = new Map<string, string | FileContent>();
   journal: Journal | null = null;
   history: HistoryState | null = null;

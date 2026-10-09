@@ -1,3 +1,4 @@
+import { currentMetadata } from "../src/core/metadata";
 import { textContent } from "../src/core/content";
 import { Context, Effect, Exit, Layer, Scope } from "effect";
 import { afterEach, expect, it, vi } from "vitest";
@@ -51,6 +52,9 @@ it("releases already restored documents if opening a journal fails", async () =>
   destroy.mockClear();
   const local = new MemoryVault();
   local.journal = {
+    metadata: currentMetadata(),
+    checkpoint: null,
+    blobs: [],
     vaultRoot: registration.root,
     files: [stored, stored],
     intents: [],

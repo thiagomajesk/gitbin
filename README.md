@@ -57,3 +57,25 @@ Gitbin uses a Git repository to sync your vault's files between devices and CRDT
 | `pnpm analyze` | Check for dead code with Fallow. |
 | `pnpm analyze:health` | Check complexity and code health with Fallow. |
 | `pnpm quality` | Run all checks, tests, and the production build. |
+
+### Consolidation and migrations
+
+Open **Settings → Gitbin → Maintenance → Consolidate** to review the explanation, warning, and checklist. Opening or cancelling this dialog performs no repository work; fetching, validation, and preparation begin only after clicking the final action. Confirmation replaces main with one root commit containing the latest committed snapshot. Pending local edits remain in the device journal for the next sync. The modal requires acknowledgement that this force push rewrites history.
+
+Back up old history separately before confirming if you need it. Other branches and tags are unchanged and may retain old objects. Hosting retention and garbage collection determine when storage is reclaimed. Update Gitbin on every device before resuming sync. Executable files, symlinks, and submodules currently block consolidation rather than changing their modes.
+
+Use **Maintenance → Reinitialize repository** to repair corrupted sync data. Gitbin replaces `.gitbin` and rebuilds tracking from the latest committed files for known vaults, including vault folders discoverable in the damaged sync directory. Ordinary files remain unchanged; pending edits stay on each device for the next sync. Reinitialization uses the same confirmation, history replacement, force-push protection, and recovery checkpoint as consolidation. Files outside known vaults are preserved as ordinary repository files. A damaged local device journal must be recovered separately so pending edits are not silently discarded.
+
+Migrations use the same consolidation pipeline; there is no standalone migrated branch or runtime legacy reader. Repository and device snapshots are converted and validated before the root commit is prepared. Publication checks the exact main revision used to prepare the replacement, then Git's receive-pack compare-and-swap protects against concurrent pushes. Recovery checkpoints block normal sync until the operation is reconciled.
+
+#### Adding a migration
+
+1. Add a module under `src/maintenance/` implementing `StorageMigration` from `types.ts`: stable descriptive `id`, readable `title`, and Effect-based `inspect`, `transform`, and `validate` hooks. Inspection returns `needed`, `satisfied`, or `blocked` with a reason.
+2. Handle both repository and device snapshots, preserving file identities, pending edits, baselines, and interrupted-write intents. Inspection and validation receive isolated copies too. A satisfied step skips transformation but must pass validation before its ID is recorded. Migration steps must not access the network, modify the original snapshot, or publish commits.
+3. Append the step to `storageMigrations` and its ID to `migrationIds` in `src/core/metadata.ts`; their order must match. Update runtime schemas to accept only current data. Once released, preserve each migration's ID, behavior, and validation contract when changing shared schemas.
+4. Add fixtures for pending and already-satisfied data, blocked inspection, corrupted inputs, offline edits, and interrupted recovery. The engine rejects duplicate registry IDs, unknown applied IDs, and applied sequences with gaps or reordering.
+5. Run `pnpm quality`. Exercise root-only publication, cancellation, competing pushes, and returning devices against temporary repositories.
+
+Repository state lives in `.gitbin/metadata.json`: `appliedMigrations` records validated migration IDs and `consolidationHash` changes on each consolidation. Device journals carry the same metadata. Fresh data starts with the current migration list; existing data is upgraded only through confirmed consolidation. The registered steps are `binary-content-references`, `unified-metadata`, and `vault-storage`; only migration code understands the old numeric markers. To migrate an older local device journal after another device has consolidated, run Consolidate on that device too; its pending changes are preserved while the repository is consolidated again. Normal sync never force pushes or reads legacy data.
+
+Repository storage keeps text state in `.gitbin/vaults/<vault>/notes/` and attachment state in `attachments/`. Binary references resolve through ordinary Git file objects first; `retained/` keeps only content still needed by sync state but absent from ordinary files. Consolidation rebuilds compact CRDT documents with stable file IDs, removes deleted states and retained objects, and changes `consolidationHash`. Devices replay changes relative to their durable sync checkpoint instead of merging pre-consolidation CRDT updates; conflicting changes are preserved in separate files. Optional UI history is not the sync checkpoint.

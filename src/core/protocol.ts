@@ -1,6 +1,9 @@
+import { CheckpointFile } from "./checkpoint";
+import { Metadata } from "./metadata";
 import { Effect, Schema } from "effect";
 import { SyncError } from "./errors";
-import { FileContent } from "./content";
+import type { FileContent } from "./content";
+import { BlobId, StoredContent } from "./blobs";
 
 const Id = Schema.String.check(Schema.isPattern(/^[a-f0-9-]{36}$/));
 export const Registration = Schema.Struct({
@@ -18,27 +21,40 @@ const StoredFile = Schema.Struct({
   id: Id,
   state: Schema.String,
   baselinePath: Schema.NullOr(Schema.String),
-  baselineContent: Schema.NullOr(FileContent),
+  baselineContent: Schema.NullOr(StoredContent),
   baselineState: Schema.NullOr(Schema.String),
 });
 export type StoredFile = typeof StoredFile.Type;
-const WriteIntent = Schema.Struct({
+export interface WriteIntent {
+  readonly path: string;
+  readonly before: FileContent | null;
+  readonly after: FileContent | null;
+}
+const StoredIntent = Schema.Struct({
   path: Schema.String,
-  before: Schema.NullOr(FileContent),
-  after: Schema.NullOr(FileContent),
+  before: Schema.NullOr(StoredContent),
+  after: Schema.NullOr(StoredContent),
 });
-export type WriteIntent = typeof WriteIntent.Type;
 export const Journal = Schema.Struct({
+  checkpoint: Schema.NullOr(Schema.Array(CheckpointFile)),
+  metadata: Metadata,
+  blobs: Schema.Array(BlobId),
   vaultRoot: Schema.NonEmptyString,
   files: Schema.Array(StoredFile),
-  intents: Schema.Array(WriteIntent),
+  intents: Schema.Array(StoredIntent),
 });
 export type Journal = typeof Journal.Type;
 
 export const decode = <A>(schema: Schema.Codec<A>, input: unknown): Effect.Effect<A, SyncError> =>
   Schema.decodeUnknownEffect(schema, { onExcessProperty: "error" })(input).pipe(
     Effect.mapError(
-      (cause) => new SyncError({ message: "Invalid or unsupported Gitbin data.", cause }),
+      (cause) =>
+        new SyncError({
+          message: "Invalid or unsupported Gitbin data.",
+          code: "invalid-data",
+          detail: "Saved data failed schema validation. File contents are omitted.",
+          cause,
+        }),
     ),
   );
 

@@ -330,13 +330,14 @@ it("keeps failed manual sync available for retry without reporting success", asy
   render(<SyncStatus actions={actions} />);
   const user = userEvent.setup();
   await user.click(screen.getByRole("button", { name: "Sync now" }));
-  expect(screen.getByRole("alert").textContent).toContain("could not finish");
+  expect(screen.getByText(/could not finish/)).toBeTruthy();
+  expect(screen.getByRole("status").textContent).toBe("Last sync failed");
   expect((screen.getByRole("button", { name: "Sync now" }) as HTMLButtonElement).disabled).toBe(
     false,
   );
   await user.click(screen.getByRole("button", { name: "Sync now" }));
   expect(actions.synchronize).toHaveBeenCalledTimes(2);
-  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.queryByText(/could not finish/)).toBeNull();
 });
 
 it("uses only added, removed, and changed icons, treating the first recorded files as added", () => {

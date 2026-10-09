@@ -1,12 +1,10 @@
-import { Schema } from "effect";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 
-export const FileContent = Schema.Struct({
-  type: Schema.Literals(["text", "binary"]),
-  value: Schema.String,
-});
-export type FileContent = typeof FileContent.Type;
+export interface FileContent {
+  readonly type: "text" | "binary";
+  readonly value: string;
+}
 
 export function encodeBytes(bytes: Uint8Array): string {
   let binary = "";

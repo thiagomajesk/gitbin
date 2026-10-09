@@ -43,6 +43,9 @@ import "./styles.css";
 import { exportSetup } from "./auth/setup-transfer";
 import { readSetupCode } from "./auth/setup-code";
 import { SetupImportModal, SetupQrModal } from "./ui/setup-transfer-modal";
+import { ConsolidationModal } from "./ui/consolidation-modal";
+import { maintenanceStorage } from "./platform/consolidation";
+import { syncIssue } from "./ui/sync-issue";
 import { pluginActions } from "./ui/actions";
 
 export default class GitbinPlugin extends Plugin {
@@ -70,6 +73,8 @@ export default class GitbinPlugin extends Plugin {
   private attached = false;
   private layoutReady = false;
   private connecting = false;
+  private maintaining = false;
+  private consolidationModal: ConsolidationModal | undefined;
   private transferModal: SetupImportModal | SetupQrModal | undefined;
 
   override async onload(): Promise<void> {
@@ -154,6 +159,98 @@ export default class GitbinPlugin extends Plugin {
     };
     settings.setting.open();
     settings.setting.openTabById(this.manifest.id);
+  }
+  reinitialize(): void {
+    this.consolidate(true);
+  }
+  consolidate(reinitialize = false): void {
+    if (this.maintaining || !this.config.remote) return;
+    this.maintaining = true;
+    const { remote, root } = this.config;
+    const modal = new ConsolidationModal(
+      this.app,
+      {
+        reinitialize,
+        vaults: [...new Set([root, ...this.config.vaults.map((row) => row.vault.root)])],
+      },
+      async (report) => {
+        if (this.config.remote !== remote || this.config.root !== root)
+          throw new Error("Repository settings changed. Close this dialog and try again.");
+        const success = await this.enqueue(() => this.runMaintenance(reinitialize, report));
+        if (!success)
+          throw new Error(
+            "Repository maintenance did not finish. Close this dialog and try again to recover any saved checkpoint.",
+          );
+      },
+      () => {
+        if (this.consolidationModal !== modal) return;
+        this.maintaining = false;
+        this.consolidationModal = undefined;
+      },
+    );
+    this.consolidationModal = modal;
+    modal.open();
+  }
+  private runMaintenance(reinitialize: boolean, report: (message: string) => void) {
+    return Effect.gen({ self: this }, function* () {
+      yield* Effect.sync(() => report("Saving local changes…"));
+      yield* this.captureEdits();
+      yield* this.closeEngine();
+      const remote = yield* this.remote(this.config);
+      const storage = maintenanceStorage(this.app, this.storage(this.config));
+      yield* Effect.sync(() => report("Checking for an unfinished operation…"));
+      const pending = yield* io("Cannot read maintenance recovery checkpoint.", storage.pending);
+      if (
+        pending &&
+        (yield* io("Cannot verify pending maintenance.", () =>
+          remote.maintenance.status(pending.expected, pending.revision),
+        )) === "stale"
+      ) {
+        yield* io("Cannot preserve stale maintenance checkpoint.", storage.discardStale);
+      } else if (pending) {
+        yield* io(
+          "Cannot finish the previous maintenance. The recovery checkpoint is preserved.",
+          async () => {
+            await remote.maintenance.apply(pending.expected, pending.revision, report);
+            report("Updating local metadata…");
+            await storage.install();
+            await this.finishConsolidation(reinitialize);
+          },
+        );
+        return;
+      }
+      const device = yield* io("Cannot read device data for maintenance.", storage.loadDevice);
+      const preview = yield* io("Cannot prepare maintenance. Your repository is unchanged.", () =>
+        remote.maintenance.preview(
+          device,
+          reinitialize
+            ? [...new Set([this.config.root, ...this.config.vaults.map((row) => row.vault.root)])]
+            : undefined,
+          report,
+        ),
+      );
+      yield* io(
+        "Repository maintenance failed. Reopen this action to recover the saved checkpoint.",
+        async () => {
+          report("Saving recovery checkpoint…");
+          await storage.stage(preview);
+          await remote.maintenance.apply(preview.sourceRevision, preview.revision, report);
+          report("Updating local metadata…");
+          await storage.install();
+          await this.finishConsolidation(reinitialize);
+        },
+      );
+    });
+  }
+  private async finishConsolidation(reinitialize = false): Promise<void> {
+    this.config = { ...this.config, lastRevision: null };
+    await this.saveData(this.config);
+    this.ui.update({
+      history: [],
+      config: this.config,
+      status: reinitialize ? "Repository reinitialized" : "Repository consolidated",
+      error: null,
+    });
   }
   scanToSync(): void {
     try {
@@ -335,8 +432,9 @@ export default class GitbinPlugin extends Plugin {
     this.lastFailure = error;
     this.ui.update({ stale: true });
     this.setStatus("Needs attention");
-    this.ui.update({ error: explain(error) });
-    if (!retryable(error)) new Notice(explain(error), 10000);
+    const issue = syncIssue(error);
+    this.ui.update({ error: explain(error), issue });
+    if (!issue && !retryable(error)) new Notice(explain(error), 10000);
   }
 
   private storage(config: Config): string {
@@ -373,6 +471,15 @@ export default class GitbinPlugin extends Plugin {
   });
   private openEngine = Effect.fn("plugin.openEngine")(function* (this: GitbinPlugin) {
     if (this.engine) return this.engine;
+    const pending = yield* io(
+      "Cannot inspect consolidation checkpoint.",
+      maintenanceStorage(this.app, this.storage(this.config)).pending,
+    );
+    if (pending)
+      return yield* new SyncError({
+        message:
+          "Finish the interrupted consolidation in Settings → Gitbin → Consolidate before syncing.",
+      });
     const registration = yield* decode(Registration, {
       name: this.app.vault.getName(),
       root: this.config.root,
@@ -483,7 +590,7 @@ export default class GitbinPlugin extends Plugin {
       new Notice("Gitbin: wait for the vault to finish loading before syncing.");
       return Promise.resolve(false);
     }
-    if (this.syncing) return Promise.resolve(false);
+    if (this.syncing || this.maintaining) return Promise.resolve(false);
     this.syncing = true;
     window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
@@ -564,6 +671,7 @@ export default class GitbinPlugin extends Plugin {
 
   override onunload(): void {
     this.stopped = true;
+    this.consolidationModal?.close();
     this.settingsTab?.dispose();
     this.retryLoop.stop();
     if (this.captureTimer) window.clearTimeout(this.captureTimer);

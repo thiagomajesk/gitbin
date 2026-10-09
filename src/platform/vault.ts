@@ -1,10 +1,19 @@
+import { parseStoredData } from "../core/storage-format";
+import { BlobId, blobId, binaryObject } from "../core/blobs";
+import { Schema } from "effect";
 import type { App, TFile } from "obsidian";
 import { io } from "../core/errors";
 import type { LocalVault } from "../core/ports";
 import type { Journal } from "../core/protocol";
 import type { HistoryState } from "../core/history";
 import { validPath } from "../core/protocol";
-import { contentFromBytes, contentBytes, contentEqual, type FileContent } from "../core/content";
+import {
+  binaryContent,
+  contentFromBytes,
+  contentBytes,
+  contentEqual,
+  type FileContent,
+} from "../core/content";
 import { ensureFolder, validateStoragePath } from "./storage";
 
 export class ObsidianVault implements LocalVault {
@@ -85,22 +94,56 @@ export class ObsidianVault implements LocalVault {
         if (next !== null) await this.createFile(path, next);
       },
     );
+  private blobPath(id: string): string {
+    Schema.decodeUnknownSync(BlobId)(id);
+    const path = this.localDirectory + "/blobs/" + id;
+    validateStoragePath(path);
+    return path;
+  }
+
+  loadBlobs = (ids: readonly string[]) =>
+    io("Cannot load retained binary content.", async () => {
+      const objects = new Map<string, FileContent>();
+      for (const id of ids) {
+        const bytes = new Uint8Array(await this.app.vault.adapter.readBinary(this.blobPath(id)));
+        objects.set(id, binaryObject(id, bytes));
+      }
+      return objects;
+    });
+
+  saveBlobs = (objects: ReadonlyMap<string, FileContent>) =>
+    io("Cannot retain binary content. Sync stopped before saving references.", async () => {
+      if (objects.size === 0) return;
+      const adapter = this.app.vault.adapter;
+      await ensureFolder(adapter, this.localDirectory + "/blobs");
+      for (const [id, content] of objects) {
+        const path = this.blobPath(id);
+        if (blobId(content) !== id) throw new Error("Invalid binary blob.");
+        if (await adapter.exists(path)) {
+          const existing = binaryContent(new Uint8Array(await adapter.readBinary(path)));
+          if (blobId(existing) === id) continue;
+          // An interrupted earlier write may have left an unreferenced partial blob.
+          // Replace it only with bytes already verified against the expected object ID.
+        }
+        await adapter.writeBinary(path, contentBytes(content).buffer as ArrayBuffer);
+        binaryObject(id, new Uint8Array(await adapter.readBinary(path)));
+      }
+    });
+
   load = () =>
     io("Cannot load Gitbin's local journal.", async (): Promise<unknown> => {
       const adapter = this.app.vault.adapter;
       const file = this.localDirectory + "/journal.json";
       validateStoragePath(file);
       if (!(await adapter.exists(file))) return null;
-      return JSON.parse(await adapter.read(file)) as unknown;
+      return parseStoredData(await adapter.read(file));
     });
   loadHistory = () =>
     io("Cannot load local sync history.", async (): Promise<unknown> => {
       const adapter = this.app.vault.adapter;
       const file = `${this.localDirectory}/history.json`;
       validateStoragePath(file);
-      return (await adapter.exists(file))
-        ? (JSON.parse(await adapter.read(file)) as unknown)
-        : null;
+      return (await adapter.exists(file)) ? parseStoredData(await adapter.read(file)) : null;
     });
   saveHistory = (history: HistoryState) =>
     io("Cannot save local sync history.", async () => {

@@ -1,10 +1,11 @@
+import { currentMetadata, metadataPath } from "../src/core/metadata";
 import { expect, it } from "vitest";
 import { buildCommit } from "just-git/repo";
 import { gitSession } from "../src/git/session";
-import { readEntries } from "../src/git/objects";
+import { readEntries, readFiles } from "../src/git/objects";
 import { discoverVaults } from "../src/git/vaults";
 
-async function discover(files: Record<string, string>) {
+async function storage(files: Record<string, string>) {
   const session = gitSession({
     url: "https://git.example.com/notes.git",
     credentials: () => null,
@@ -23,13 +24,16 @@ async function discover(files: Record<string, string>) {
     author: { name: "test", email: "test@example.com" },
   });
   const entries = await readEntries(repo, commit.hash, { root: "My Vault", name: "My Vault" });
-  return discoverVaults(entries);
+  return { repo, entries };
+}
+async function discover(files: Record<string, string>) {
+  return discoverVaults((await storage(files)).entries);
 }
 it("discovers vaults from their CRDT files without a registry", async () => {
   expect(
     await discover({
-      ".gitbin/vaults/My Vault/00000000-0000-4000-8000-000000000001.bin": "",
-      ".gitbin/vaults/Work/00000000-0000-4000-8000-000000000001.bin": "",
+      ".gitbin/vaults/My Vault/notes/00000000-0000-4000-8000-000000000001.bin": "",
+      ".gitbin/vaults/Work/notes/00000000-0000-4000-8000-000000000001.bin": "",
     }),
   ).toEqual([
     { root: "My Vault", name: "My Vault" },
@@ -49,8 +53,28 @@ it("rejects placeholder metadata instead of retaining compatibility", async () =
 it("rejects case-insensitive vault collisions", async () => {
   await expect(
     discover({
-      ".gitbin/vaults/Work/00000000-0000-4000-8000-000000000001.bin": "",
-      ".gitbin/vaults/work/00000000-0000-4000-8000-000000000001.bin": "",
+      ".gitbin/vaults/Work/notes/00000000-0000-4000-8000-000000000001.bin": "",
+      ".gitbin/vaults/work/notes/00000000-0000-4000-8000-000000000001.bin": "",
     }),
   ).rejects.toThrow("distinct");
+});
+
+it("refuses future formats and mismatched binary object addresses", async () => {
+  const future = await storage({
+    [metadataPath]: JSON.stringify({
+      consolidationHash: null,
+      appliedMigrations: ["future-migration"],
+    }),
+  });
+  const vault = { root: "My Vault", name: "My Vault" };
+  await expect(readFiles(future.repo, future.entries, vault, async () => {})).rejects.toThrow(
+    "newer Gitbin version",
+  );
+  const corrupt = await storage({
+    [metadataPath]: JSON.stringify(currentMetadata()),
+    [".gitbin/vaults/My Vault/retained/" + "a".repeat(40)]: "wrong content",
+  });
+  await expect(readFiles(corrupt.repo, corrupt.entries, vault, async () => {})).rejects.toThrow(
+    "Invalid binary storage entry",
+  );
 });

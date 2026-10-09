@@ -5,6 +5,8 @@ import type { HistoryState } from "./history";
 import type { FileContent } from "./content";
 
 export interface LocalVault {
+  loadBlobs(ids: readonly string[]): Effect.Effect<ReadonlyMap<string, FileContent>, SyncError>;
+  saveBlobs(blobs: ReadonlyMap<string, FileContent>): Effect.Effect<void, SyncError>;
   scan(): Effect.Effect<ReadonlyMap<string, FileContent>, SyncError>;
   read(path: string): Effect.Effect<FileContent | null, SyncError>;
   write(
@@ -19,6 +21,8 @@ export interface LocalVault {
 }
 
 export interface RemoteSnapshot {
+  readonly consolidationHash?: string | null;
+  readonly blobs?: ReadonlyMap<string, FileContent>;
   readonly revision: string | null;
   readonly vaults: ReadonlyArray<Registration>;
   readonly states: ReadonlyMap<string, Uint8Array>;
@@ -26,6 +30,7 @@ export interface RemoteSnapshot {
 }
 
 export interface Publication {
+  readonly blobs?: ReadonlyMap<string, FileContent>;
   readonly vault: Registration;
   readonly states: ReadonlyMap<string, Uint8Array>;
   readonly files: ReadonlyMap<string, FileContent>;

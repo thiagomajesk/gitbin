@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import { contentHash } from "./content";
+import { BinaryObjects } from "./blobs";
 import { FileDocument } from "./file";
 
 const FileSnapshot = Schema.Struct({
@@ -50,11 +51,12 @@ export function snapshotFiles(states: Iterable<FileDocument>): ReadonlyArray<Fil
 
 export function snapshotUpdates(
   updates: ReadonlyMap<string, Uint8Array>,
+  blobs = new BinaryObjects(),
 ): ReadonlyArray<FileSnapshot> {
   const states: FileDocument[] = [];
   try {
     for (const [id, bytes] of updates) {
-      const file = new FileDocument(id);
+      const file = new FileDocument(id, undefined, blobs);
       states.push(file);
       file.merge(bytes);
     }

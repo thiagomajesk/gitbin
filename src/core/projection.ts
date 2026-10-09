@@ -1,16 +1,20 @@
 import { contentEqual, contentHash, type FileContent } from "./content";
+import { BinaryObjects } from "./blobs";
 import { FileDocument } from "./file";
 import type { RemoteSnapshot } from "./ports";
 import { type WriteIntent, validPath } from "./protocol";
 
 function remotePaths(snapshot: RemoteSnapshot): Map<string, FileContent> {
   const paths = new Map<string, FileContent>();
+  const blobs = new BinaryObjects();
+  blobs.import(snapshot.blobs ?? new Map());
   for (const [id, update] of snapshot.states) {
-    const incoming = new FileDocument(id);
+    const incoming = new FileDocument(id, undefined, blobs);
     try {
       incoming.merge(update);
+      const content = incoming.content;
       for (const [, location] of incoming.locations())
-        if (location.path !== null) paths.set(location.path, incoming.content);
+        if (location.path !== null) paths.set(location.path, content);
     } finally {
       incoming.destroy();
     }
@@ -169,6 +173,7 @@ export function attachFile(
   states: Map<string, FileDocument>,
   path: string,
   text: FileContent,
+  blobs = new BinaryObjects(),
 ): void {
   if (!validPath(path)) throw new Error(`Unsupported local path: ${path}`);
   const matching = Array.from(states.values()).find((file) =>
@@ -180,7 +185,7 @@ export function attachFile(
       return;
     }
   }
-  const file = new FileDocument(crypto.randomUUID());
+  const file = new FileDocument(crypto.randomUUID(), undefined, blobs);
   file.edit(text);
   file.move(path);
   file.materialized(path);

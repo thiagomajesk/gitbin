@@ -1,3 +1,4 @@
+import { checkPushLease } from "./push-lease";
 import { NetworkError } from "../core/errors";
 import {
   createGit,
@@ -22,11 +23,20 @@ export function gitSession(connection: Connection) {
   const fs = connection.fs ?? new MemoryFileSystem();
   const cwd = "/repo";
   let networkFailure: NetworkError | undefined;
+  let pushLease: string | undefined;
   const network: NetworkPolicy = {
     ...connection.network,
     fetch: async (input, init) => {
       try {
         const response = await connection.network.fetch(input, init);
+        if (
+          pushLease &&
+          (input instanceof Request ? input.url : String(input)).includes(
+            "service=git-receive-pack",
+          ) &&
+          response.ok
+        )
+          await checkPushLease(response, pushLease);
         if (!response.ok)
           networkFailure = new NetworkError({
             message: "Repository HTTP " + response.status,
@@ -101,5 +111,13 @@ export function gitSession(connection: Connection) {
       throw networkFailure ?? error;
     }
   };
-  return { repo, fetch, run, hydrate };
+  const pushConsolidation = async (expected: string) => {
+    pushLease = expected;
+    try {
+      await run(["push", "--force", "origin", "refs/heads/main:refs/heads/main"]);
+    } finally {
+      pushLease = undefined;
+    }
+  };
+  return { repo, fetch, run, hydrate, pushConsolidation };
 }

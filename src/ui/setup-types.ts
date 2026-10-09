@@ -8,6 +8,8 @@ export interface RepositoryInspection {
 export interface SetupActions extends SyncActions {
   readonly vaultName: string;
   scanToSync(): void;
+  consolidate(): void;
+  reinitialize(): void;
   saveSyncPreferences(preferences: SyncPreferences): Promise<boolean>;
   savedAuthentication(): Authentication | null;
   disconnect(): Promise<boolean>;

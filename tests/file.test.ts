@@ -1,3 +1,4 @@
+import * as Y from "yjs";
 import { textContent, binaryContent } from "../src/core/content";
 import { describe, expect, it, vi } from "vitest";
 import { FileDocument } from "../src/core/file";
@@ -11,13 +12,21 @@ function replicas() {
 }
 
 describe("CRDT text and location registers", () => {
+  it("requires explicit migration instead of accepting legacy binary state", () => {
+    const legacy = new Y.Doc();
+    legacy.getMap("content").set("value", binaryContent(new Uint8Array([0, 1])));
+    const file = new FileDocument(crypto.randomUUID());
+    expect(() => file.merge(Y.encodeStateAsUpdate(legacy))).toThrow();
+    file.destroy();
+    legacy.destroy();
+  });
   it("converges atomic file replacements in either update delivery order", () => {
     const seed = new FileDocument(crypto.randomUUID());
     seed.edit(binaryContent(new Uint8Array([0, 255, 1])));
     seed.move("Image.png");
     seed.materialized("Image.png");
-    const left = new FileDocument(seed.id, seed.stored());
-    const right = new FileDocument(seed.id, seed.stored());
+    const left = new FileDocument(seed.id, seed.stored(), seed.blobs);
+    const right = new FileDocument(seed.id, seed.stored(), seed.blobs);
     const a = binaryContent(new Uint8Array([0, 255, 2]));
     const b = binaryContent(new Uint8Array([0, 255, 3]));
     left.captureContent(a);
@@ -29,11 +38,11 @@ describe("CRDT text and location registers", () => {
     left.merge(second);
     expect(left.content).toEqual(right.content);
     expect([a, b]).toContainEqual(left.content);
-    const restored = new FileDocument(left.id, left.stored());
+    const restored = new FileDocument(left.id, left.stored(), left.blobs);
     expect(restored.content).toEqual(left.content);
     for (const file of [seed, left, right, restored]) file.destroy();
   });
-  it("garbage-collects replaced binary payloads while retaining the latest value", () => {
+  it("keeps binary CRDT state small across replacements while retaining the latest reference", () => {
     const file = new FileDocument(crypto.randomUUID());
     file.edit(binaryContent(new Uint8Array(128000).fill(0)));
     file.move("Large.bin");
@@ -42,8 +51,9 @@ describe("CRDT text and location registers", () => {
       file.captureContent(binaryContent(new Uint8Array(128000).fill(value)));
       file.materialized("Large.bin");
     }
-    expect(file.bytes().length).toBeLessThan(180000);
-    const restored = new FileDocument(file.id, file.stored());
+    expect(file.bytes().length).toBeLessThan(2000);
+    expect(JSON.stringify(file.stored()).length).toBeLessThan(6000);
+    const restored = new FileDocument(file.id, file.stored(), file.blobs);
     expect(restored.content).toEqual(binaryContent(new Uint8Array(128000).fill(3)));
     file.destroy();
     restored.destroy();

@@ -2,6 +2,8 @@ import { Data, Effect } from "effect";
 
 export class SyncError extends Data.TaggedError("SyncError")<{
   readonly message: string;
+  readonly code?: "migration-required" | "newer-format" | "invalid-data";
+  readonly detail?: string;
   readonly cause?: unknown;
 }> {}
 

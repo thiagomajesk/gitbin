@@ -26,8 +26,11 @@ export class GitbinSettings extends PluginSettingTab {
           "Sync automatically",
           "Send local changes after",
           "Check for remote changes every",
+          "Consolidate",
+          "Reinitialize",
         ],
-        render: (setting) => {
+        render: (setting, group) => {
+          group.listEl.addClass("gitbin-settings-host");
           this.dispose();
           setting.settingEl.empty();
           setting.settingEl.removeClass("setting-item");

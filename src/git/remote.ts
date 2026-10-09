@@ -1,3 +1,4 @@
+import { consolidation } from "./consolidation";
 import { inspectVaults } from "./status";
 import { Effect } from "effect";
 import { SyncError, io, attempt } from "../core/errors";
@@ -46,11 +47,11 @@ export function createGitRemote(connection: Connection) {
     const entries = yield* io("Cannot read the committed Git tree.", () =>
       readEntries(fetched.repo, fetched.revision ?? "", vault),
     );
-    const vaults = yield* attempt("Cannot read Gitbin storage layout.", () =>
-      discoverVaults(entries),
-    );
     const content = yield* io("Cannot read saved files.", () =>
       readFiles(fetched.repo, entries, vault, (hashes) => session.hydrate(fetched.repo, hashes)),
+    );
+    const vaults = yield* attempt("Cannot read Gitbin storage layout.", () =>
+      discoverVaults(entries),
     );
     return { revision: fetched.revision, vaults, ...content };
   });
@@ -88,5 +89,8 @@ export function createGitRemote(connection: Connection) {
       inspectVaults(repo, snapshot, vault.root, checkpoint),
     );
   });
-  return { read, publish, inspect } satisfies GitRemote & { inspect: typeof inspect };
+  return { read, publish, inspect, maintenance: consolidation(connection) } satisfies GitRemote & {
+    inspect: typeof inspect;
+    maintenance: ReturnType<typeof consolidation>;
+  };
 }

@@ -1,3 +1,4 @@
+import type { SyncIssue } from "./sync-issue";
 import type { VaultStatus } from "../git/status";
 import type { Config } from "../core/config";
 import type { HistoryEntry } from "../core/history";
@@ -12,6 +13,7 @@ export interface UiSnapshot {
   readonly config: Config;
   readonly status: string;
   readonly error: string | null;
+  readonly issue?: SyncIssue | null;
 }
 
 export function createUiStore(initial: UiSnapshot) {
@@ -26,7 +28,7 @@ export function createUiStore(initial: UiSnapshot) {
       };
     },
     update: (patch: Partial<UiSnapshot>) => {
-      snapshot = { ...snapshot, ...patch };
+      snapshot = { ...snapshot, ...patch, ...(patch.error === null ? { issue: null } : {}) };
       for (const listener of listeners) listener();
     },
   };

@@ -9,15 +9,21 @@
   margin: var(--size-4-5) auto;
   image-rendering: pixelated;
 }
-.gitbin-setup-modal {
+.gitbin-setup-modal,
+.gitbin-import-modal,
+.gitbin-history-modal,
+.gitbin-consolidation-modal {
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.gitbin-setup-modal .modal-title {
+:is(.gitbin-setup-modal, .gitbin-import-modal, .gitbin-history-modal, .gitbin-consolidation-modal)
+  > .modal-header {
   flex-shrink: 0;
 }
-.gitbin-setup-modal .modal-content {
+:is(.gitbin-setup-modal, .gitbin-import-modal, .gitbin-history-modal, .gitbin-consolidation-modal)
+  > .modal-content {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
@@ -92,6 +98,12 @@
 .gitbin-view {
   padding: var(--size-4-6);
   overflow: auto;
+}
+/* The custom renderer supplies its own groups; the host must not add another card. */
+.setting-group > .setting-items.gitbin-settings-host {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 .gitbin-settings-setup {
   width: 100%;
@@ -597,4 +609,118 @@
   .gitbin-sync-preference select {
     width: 100%;
   }
+}
+
+/* Consolidation confirmation */
+.gitbin-consolidation-modal {
+  width: 580px;
+  max-width: calc(100vw - var(--size-4-8));
+}
+.gitbin-consolidation-modal .modal-title {
+  margin-bottom: var(--size-4-2);
+}
+.gitbin-consolidation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-4);
+}
+.gitbin-consolidation p {
+  margin: 0;
+}
+.gitbin-consolidation-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-4-3);
+  padding: var(--size-4-4);
+  background: color-mix(in srgb, var(--text-warning) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-warning) 25%, transparent);
+  border-radius: var(--radius-m);
+}
+.gitbin-consolidation-warning > svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--text-warning);
+}
+.gitbin-consolidation-warning p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.gitbin-consolidation-checklist {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.gitbin-consolidation-checklist legend {
+  padding: 0;
+  margin-bottom: var(--size-4-3);
+  font-weight: var(--font-semibold);
+}
+.gitbin-consolidation-checklist label + label {
+  margin-top: var(--size-4-3);
+}
+.gitbin-consolidation-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-4);
+  padding-top: var(--size-4-4);
+  border-top: 1px solid var(--background-modifier-border);
+}
+.gitbin-consolidation-acknowledgement {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-4-3);
+  cursor: var(--cursor);
+}
+.gitbin-consolidation-acknowledgement input {
+  flex-shrink: 0;
+  margin: 3px 0 0;
+}
+.gitbin-consolidation-actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--size-4-6);
+}
+.gitbin-consolidation-actions button {
+  margin: 0;
+}
+@media (max-width: 480px) {
+  .gitbin-consolidation-actions button {
+    flex: 1 1 auto;
+    white-space: normal;
+    height: auto;
+    min-height: var(--input-height);
+  }
+}
+
+.gitbin-status-warning {
+  color: var(--text-warning);
+}
+.gitbin-summary dd.gitbin-status-description {
+  grid-column: 1 / -1;
+  text-align: left;
+  margin-top: calc(-1 * var(--size-4-2));
+}
+
+.gitbin-consolidation-modal > .modal-header-button {
+  display: none;
+}
+.gitbin-maintenance-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  width: 100%;
+}
+.gitbin-maintenance-progress progress {
+  display: block;
+  width: 100%;
+  height: var(--size-4-2);
+  accent-color: var(--interactive-accent);
+}
+.gitbin-maintenance-progress p {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
 }
