@@ -1,4 +1,4 @@
-import { LoaderCircle, RefreshCw } from "lucide-react";
+import { Info, LoaderCircle, RefreshCw } from "lucide-react";
 import { useId, useState, useSyncExternalStore } from "react";
 import { IconButton } from "./icon-button";
 import {
@@ -37,18 +37,27 @@ function StatusRow({
   status,
   info,
   warning,
+  showLog,
 }: {
   readonly status: string;
   readonly info: string | null;
   readonly warning: boolean;
+  readonly showLog?: (() => void) | undefined;
 }) {
   const descriptionId = useId();
   const color = statusColor(warning, status);
   return (
     <div className="gitbin-sync-status-group">
       <dt>Status</dt>
-      <dd role="status" className={color} aria-describedby={info ? descriptionId : undefined}>
-        {status}
+      <dd className="gitbin-status-value">
+        <span role="status" className={color} aria-describedby={info ? descriptionId : undefined}>
+          {status}
+        </span>
+        {showLog ? (
+          <IconButton label="View sync log" onClick={showLog}>
+            <Info aria-hidden="true" className="svg-icon" />
+          </IconButton>
+        ) : null}
       </dd>
       {info ? (
         <dd className="gitbin-status-description">
@@ -60,7 +69,6 @@ function StatusRow({
     </div>
   );
 }
-
 export function SyncStatus({ actions }: { readonly actions: SyncActions }) {
   const headingId = useId();
   const snapshot = useSyncExternalStore(actions.store.subscribe, actions.store.getSnapshot);
@@ -91,7 +99,12 @@ export function SyncStatus({ actions }: { readonly actions: SyncActions }) {
       </div>
       <div className="setting-items gitbin:grid gitbin:gap-[var(--size-4-4)] gitbin:p-[var(--size-4-5)]">
         <dl className="gitbin-summary">
-          <StatusRow status={status} info={statusInfo} warning={blocked} />
+          <StatusRow
+            status={busy ? (snapshot.phase ?? status) : status}
+            info={statusInfo}
+            warning={blocked}
+            showLog={actions.showLog ? () => actions.showLog?.() : undefined}
+          />
           {snapshot.config.setupComplete ? <SyncDetails snapshot={snapshot} /> : null}
           <DownloadUsage downloads={snapshot.downloads} />
         </dl>
@@ -99,7 +112,6 @@ export function SyncStatus({ actions }: { readonly actions: SyncActions }) {
     </section>
   );
 }
-
 function SyncDetails({ snapshot }: { readonly snapshot: UiSnapshot }) {
   const current = snapshot.vaults?.find((row) => row.connected);
   return (
@@ -123,7 +135,6 @@ function SyncDetails({ snapshot }: { readonly snapshot: UiSnapshot }) {
     </>
   );
 }
-
 function snapshotState(snapshot: UiSnapshot): string {
   const current = snapshot.vaults?.find((row) => row.connected);
   return syncState(
@@ -140,7 +151,6 @@ function snapshotState(snapshot: UiSnapshot): string {
     ),
   );
 }
-
 function snapshotStatus(snapshot: UiSnapshot, error: string | null) {
   return {
     status: manualStatus(Boolean(error), Boolean(snapshot.error), snapshotState(snapshot)),
@@ -148,7 +158,6 @@ function snapshotStatus(snapshot: UiSnapshot, error: string | null) {
     blocked: syncBlocked(snapshot.issue?.kind ?? null),
   };
 }
-
 function DownloadUsage({ downloads }: { readonly downloads: UiSnapshot["downloads"] }) {
   if (!downloads) return null;
   return (

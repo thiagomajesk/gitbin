@@ -1,9 +1,12 @@
+import type { ActivityEntry } from "../core/activity";
 import type { Config } from "../core/config";
 import type { HistoryEntry } from "../core/history";
 import type { VaultStatus } from "../git/status";
 import type { SyncIssue } from "./sync-issue";
-
 export interface UiSnapshot {
+  readonly phase?: string | null;
+  readonly activity?: readonly ActivityEntry[];
+  readonly activityWarning?: string | null;
   readonly downloads?: { readonly used: number };
   readonly history?: ReadonlyArray<HistoryEntry>;
   readonly historyWarning?: string | null;
@@ -16,7 +19,6 @@ export interface UiSnapshot {
   readonly error: string | null;
   readonly issue?: SyncIssue | null;
 }
-
 export function createUiStore(initial: UiSnapshot) {
   let snapshot = initial;
   const listeners = new Set<() => void>();
@@ -35,8 +37,8 @@ export function createUiStore(initial: UiSnapshot) {
   };
 }
 export type UiStore = ReturnType<typeof createUiStore>;
-
 export interface SyncActions {
   readonly store: UiStore;
   synchronize(): Promise<boolean>;
+  showLog?(): void;
 }

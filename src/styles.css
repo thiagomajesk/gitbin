@@ -801,3 +801,99 @@
     margin-inline: auto;
   }
 }
+
+.gitbin-status-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--size-4-2);
+}
+.gitbin-activity-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gitbin-activity-modal .modal-content {
+  overflow-y: auto;
+  min-height: 0;
+}
+.gitbin-log-box {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: #000;
+  color: #ddd;
+  --text-muted: #aaa;
+  display: flex;
+  flex-direction: column;
+  max-height: 65vh;
+  overflow: hidden;
+}
+.gitbin-log-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--size-4-2);
+  gap: var(--size-4-2);
+  flex-shrink: 0;
+}
+.gitbin-activity-log {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--size-4-3) var(--size-4-3);
+  overflow-y: auto;
+  min-height: 0;
+}
+.gitbin-log-entry {
+  display: grid;
+  grid-template-columns: minmax(7em, max-content) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--size-4-3);
+  margin: 0;
+  padding: 1px 0;
+  font-size: var(--font-ui-small);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.gitbin-activity-log time,
+.gitbin-log-details {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+.gitbin-log-details {
+  white-space: pre-wrap;
+  margin-top: var(--size-2-1);
+}
+.gitbin-log-line {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--size-4-2);
+}
+.gitbin-log-level {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  font-size: var(--font-ui-smaller);
+  flex-shrink: 0;
+  width: 16px;
+  justify-content: center;
+}
+.gitbin-log-level .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+.gitbin-log-info {
+  color: var(--text-accent);
+}
+.gitbin-log-success {
+  color: var(--text-success, var(--color-green));
+}
+.gitbin-log-warning {
+  color: var(--text-warning);
+}
+.gitbin-log-error {
+  color: var(--text-error);
+}
+.gitbin-log-empty {
+  padding: 0 var(--size-4-3) var(--size-4-3);
+}

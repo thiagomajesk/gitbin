@@ -54,7 +54,7 @@ function syncState(connected: bool, error: bool, issue: Option<string>, status: 
           if (|status| >= |"Offline"| && status[..|"Offline"|] == "Offline") then
             "Working offline"
           else
-            "Last known state"
+            "Sync pending"
         else
           if pending then
             "Files waiting to sync"
@@ -66,7 +66,7 @@ lemma syncState_ensures(connected: bool, error: bool, issue: Option<string>, sta
   ensures (!(connected) ==> (syncState(connected, error, issue, status, stale, pending, repository) == "Not connected"))
   ensures (connected ==> error ==> (syncState(connected, error, issue, status, stale, pending, repository) == (match issue { case Some(i_issue_val) => i_issue_val case None => "Last sync failed" })))
   ensures (connected ==> !(error) ==> (status == "Syncing\u2026") ==> (syncState(connected, error, issue, status, stale, pending, repository) == "Syncing your changes"))
-  ensures (connected ==> !(error) ==> (status != "Syncing\u2026") ==> stale ==> (syncState(connected, error, issue, status, stale, pending, repository) == (if (|status| >= |"Offline"| && status[..|"Offline"|] == "Offline") then "Working offline" else "Last known state")))
+  ensures (connected ==> !(error) ==> (status != "Syncing\u2026") ==> stale ==> (syncState(connected, error, issue, status, stale, pending, repository) == (if (|status| >= |"Offline"| && status[..|"Offline"|] == "Offline") then "Working offline" else "Sync pending")))
   ensures (connected ==> !(error) ==> (status != "Syncing\u2026") ==> !(stale) ==> (syncState(connected, error, issue, status, stale, pending, repository) == (if pending then "Files waiting to sync" else repository)))
 {
 }

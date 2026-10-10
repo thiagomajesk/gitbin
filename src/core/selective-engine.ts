@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect";
+import { reportProgress } from "./activity";
 import { AvailabilityJournal } from "./availability";
 import { attempt, explain, SyncError } from "./errors";
 import { emptyHistory, type FileSnapshot, recordHistory } from "./history";
@@ -68,14 +69,22 @@ export function createSelectiveEngine(
   const sync = Effect.fn("selective.sync")(function* () {
     if (!ctx.ready)
       return yield* new SyncError({ message: "Download availability has not been restored." });
+    yield* reportProgress("Checking local changes…");
     yield* capture();
     const own = inventorySnapshots([...ctx.entries.values()].map((entry) => entry.file));
     let incoming: FileSnapshot[] | undefined;
     for (let retry = 0; retry < 10; retry++) {
+      yield* reportProgress("Checking remote changes…");
       const snapshot = yield* remote.read(vault);
+      yield* reportProgress(
+        "Remote inventory checked",
+        "Revision: " + (snapshot.revision?.slice(0, 8) ?? "Empty repository"),
+      );
       if (snapshot.consolidationHash !== ctx.consolidationHash) ctx.history = emptyHistory();
       incoming ??= inventorySnapshots(snapshot.inventory.files);
+      yield* reportProgress("Merging changes…");
       yield* integrateSelective(ctx, snapshot);
+      yield* reportProgress("Applying changes…");
       yield* materializeSelective(ctx);
       const result = yield* publishSelective(ctx, snapshot);
       if (!result.published) continue;
@@ -91,6 +100,7 @@ export function createSelectiveEngine(
       );
       yield* ctx.reserve(0);
       yield* ctx.persist();
+      yield* reportProgress("Sync checkpoint saved");
       return {
         published: true,
         snapshot,
@@ -121,6 +131,7 @@ export function createSelectiveEngine(
       yield* writeEntry(ctx, entry, path, entry.localContent, reference, true);
       entry.accessed = Date.now();
       yield* ctx.persist();
+      yield* reportProgress("File ready", entry.file.content.bytes.toLocaleString() + " bytes");
     }).pipe(
       Effect.ensuring(
         Effect.sync(() => {

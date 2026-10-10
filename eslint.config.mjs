@@ -20,6 +20,7 @@ export default [
   {
     files: [
       "src/core/selective-*.ts",
+      "src/core/activity.ts",
       "src/maintenance/engine.ts",
       "src/maintenance/*-references.ts",
       "src/maintenance/unified-metadata.ts",
@@ -39,6 +40,8 @@ export default [
         {
           allow: [
             "checkRemote",
+            "sanitizeActivity",
+            "activityFailure",
             "retryDelay",
             "contentLimit",
             "inventorySnapshots",

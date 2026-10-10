@@ -1,4 +1,4 @@
-import { Effect, Exit, Scope } from "effect";
+import { Effect, Exit, Logger, Scope } from "effect";
 import { Notice, Plugin, TFile } from "obsidian";
 import {
   type Authentication,
@@ -35,17 +35,26 @@ import { createUiStore } from "./ui/store";
 import "./styles.css";
 import { readSetupCode } from "./auth/setup-code";
 import { exportSetup } from "./auth/setup-transfer";
+import { activityFailure } from "./core/activity";
 import type { FileChange } from "./core/history";
+import { ActivityLog } from "./platform/activity-log";
 import { maintenanceStorage } from "./platform/consolidation";
 import { pluginActions } from "./ui/actions";
+import { ActivityModal } from "./ui/activity-modal";
 import { ConsolidationModal } from "./ui/consolidation-modal";
 import { warningNotice } from "./ui/notice";
 import { SetupImportModal, SetupQrModal } from "./ui/setup-transfer-modal";
 import { syncIssue } from "./ui/sync-issue";
-
 export default class GitbinPlugin extends Plugin {
   config: Config = defaults();
   readonly ui = createUiStore({ config: this.config, status: "Ready", error: null });
+  private activity: ActivityLog | undefined;
+  private activityModal: ActivityModal | undefined;
+  showLog(): void {
+    this.activityModal?.close();
+    this.activityModal = new ActivityModal(this.app, this.ui, this.manifest.version);
+    this.activityModal.open();
+  }
   private settingsTab: GitbinSettings | undefined;
   private retryScope = Scope.makeUnsafe();
   private retryLoop = createRetryLoop(
@@ -53,6 +62,7 @@ export default class GitbinPlugin extends Plugin {
       run: (manual) => Effect.promise(() => this.backgroundSync(manual)),
       online: () => navigator.onLine,
       status: (message) => {
+        this.activity?.record(message);
         this.setStatus(message);
         this.ui.update({ stale: true });
       },
@@ -79,10 +89,25 @@ export default class GitbinPlugin extends Plugin {
   private maintaining = false;
   private consolidationModal: ConsolidationModal | undefined;
   private transferModal: SetupImportModal | SetupQrModal | undefined;
-
+  private async restoreActivity(): Promise<void> {
+    this.activity = new ActivityLog(
+      this.app.vault.adapter,
+      this.app.vault.configDir + "/plugins/" + this.manifest.id + "/activity.json",
+      this.ui,
+      () => [this.savedAuthentication()?.credentials?.password ?? ""],
+    );
+    await this.activity.load();
+    this.register(() => this.activityModal?.close());
+    this.registerInterval(
+      window.setInterval(() => {
+        void this.activity?.flush();
+      }, 2000),
+    );
+  }
   override async onload(): Promise<void> {
     const raw: unknown = await this.loadData();
     this.config = loadConfig(raw);
+    await this.restoreActivity();
     this.lazyEditor.install();
     this.registerObsidianProtocolHandler("gitbin-setup", (params) => {
       this.app.workspace.onLayoutReady(() => {
@@ -117,6 +142,7 @@ export default class GitbinPlugin extends Plugin {
     this.registerDomEvent(window, "focus", () => this.resumeSync());
     this.registerDomEvent(window, "offline", () => {
       this.ui.update({ stale: true });
+      this.activity?.record("Offline", "warning", "Local changes will sync when connected");
       this.setStatus("Offline · Changes stay on this device");
     });
     this.setStatus("Ready");
@@ -165,7 +191,6 @@ export default class GitbinPlugin extends Plugin {
     await this.enqueue(() => this.openEngine().pipe(Effect.flatMap(() => this.captureEdits())));
     void Effect.runPromise(this.retryLoop.start());
   }
-
   openSettings(): void {
     const settings = this.app as typeof this.app & {
       setting: { open(): void; openTabById(id: string): void };
@@ -292,7 +317,6 @@ export default class GitbinPlugin extends Plugin {
       Boolean(this.lastFailure) && retryable(this.lastFailure),
     );
   }
-
   private cacheStatus(snapshot: InventorySnapshot | null): void {
     if (!snapshot) {
       this.ui.update({ stale: true });
@@ -309,7 +333,6 @@ export default class GitbinPlugin extends Plugin {
     this.config = { ...this.config, vaults, checkedAt };
     this.ui.update({ config: this.config, vaults, checkedAt, stale: false });
   }
-
   private requestSync(): void {
     if (this.config.setupComplete) {
       void Effect.runPromise(this.retryLoop.request());
@@ -317,15 +340,12 @@ export default class GitbinPlugin extends Plugin {
     }
     this.openHistory();
   }
-
   private setStatus(text: string): void {
-    this.ui.update({ config: this.config, status: text, error: null });
+    this.ui.update({ config: this.config, status: text, error: null, phase: null });
   }
-
   saveSyncPreferences(preferences: SyncPreferences): Promise<boolean> {
     return this.configure({ ...this.config, ...preferences });
   }
-
   configure(next: Config): Promise<boolean> {
     next = {
       ...next,
@@ -371,7 +391,6 @@ export default class GitbinPlugin extends Plugin {
       }),
     );
   }
-
   private restartSyncScheduling(): void {
     window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
@@ -388,13 +407,14 @@ export default class GitbinPlugin extends Plugin {
     this.engine = undefined;
     yield* Effect.void;
   });
-
   private downloadFile(path: string): Promise<boolean> {
     return this.enqueue(
       () =>
         Effect.gen({ self: this }, function* () {
+          this.activity?.record("Download started", "info", path);
           const engine = yield* this.openEngine();
           yield* engine.download(path);
+          this.activity?.record("Download completed", "success");
         }),
       (error) => this.reportFailure(error, !this.lazyEditor.showsDownload(path)),
     );
@@ -405,11 +425,14 @@ export default class GitbinPlugin extends Plugin {
     await this.enqueue(
       () =>
         Effect.gen({ self: this }, function* () {
+          this.activity?.record("Loading comparison");
           const engine = yield* this.openEngine();
           loaded = yield* engine.historyChange(change, () => navigator.onLine);
+          this.activity?.record("Comparison loaded", "success");
         }),
       (error) => {
         failure = error;
+        this.activity?.record(activityFailure(error, this.logSecrets()), "error");
         warningNotice(explain(error));
       },
     );
@@ -421,7 +444,6 @@ export default class GitbinPlugin extends Plugin {
       );
     return loaded;
   }
-
   async historyCached(change: FileChange): Promise<boolean> {
     let cached = false;
     await this.enqueue(
@@ -434,7 +456,6 @@ export default class GitbinPlugin extends Plugin {
     );
     return cached;
   }
-
   private enqueue(
     task: () => Effect.Effect<unknown, SyncError>,
     report: (error: unknown) => void = (error) => this.reportFailure(error),
@@ -444,6 +465,7 @@ export default class GitbinPlugin extends Plugin {
         if (this.stopped) return false;
         return Effect.runPromise(
           Effect.suspend(task).pipe(
+            Effect.provide(Logger.layer(this.activity ? [this.activity.logger] : [])),
             Effect.match({
               onSuccess: () => true,
               onFailure: (error) => {
@@ -458,16 +480,30 @@ export default class GitbinPlugin extends Plugin {
         report(error);
         return false;
       });
-    this.queue = run;
-    return run;
+    const saved = run.then(async (result) => {
+      await this.activity?.flush();
+      return result;
+    });
+    this.queue = saved;
+    return saved;
   }
-
+  private logSecrets(): readonly string[] {
+    try {
+      return [this.savedAuthentication()?.credentials?.password ?? ""];
+    } catch {
+      return [];
+    }
+  }
   private reportFailure(error: unknown, notify = true): void {
+    this.activity?.record(activityFailure(error, this.logSecrets()), "error");
     this.lastFailure = error;
     this.ui.update({ stale: true });
     this.setStatus("Needs attention");
     const issue = syncIssue(error);
-    this.ui.update({ error: explain(error), issue });
+    this.ui.update({
+      error: this.activity?.sanitize(activityFailure(error, this.logSecrets())) ?? explain(error),
+      issue,
+    });
     this.lazyEditor.refresh();
     if (notify && !issue && !retryable(error)) warningNotice(explain(error));
   }
@@ -477,14 +513,12 @@ export default class GitbinPlugin extends Plugin {
     if (this.ui.getSnapshot().issue?.kind === "migration-required") return null;
     return this.ui.getSnapshot().error ?? "Restoring download availability…";
   }
-
   private refreshDownloads(): void {
     this.lazyEditor.refresh();
     if (!this.engine) return;
     const details = this.engine.details();
     this.ui.update({ downloads: { used: details.used } });
   }
-
   private storage(config: Config): string {
     const key = hashText(config.remote + "\n" + config.root).slice(0, 24);
     return this.app.vault.configDir + "/plugins/" + this.manifest.id + "/local/" + key;
@@ -626,7 +660,6 @@ export default class GitbinPlugin extends Plugin {
       this.connecting = false;
     }
   }
-
   private async completeSetup(next: Config, authentication: Authentication): Promise<boolean> {
     if (!(await this.prepareSetup(next, authentication))) return false;
     if (!(await this.synchronize())) return false;
@@ -639,11 +672,9 @@ export default class GitbinPlugin extends Plugin {
     if (completed) this.openHistory();
     return completed;
   }
-
   manualSync(): Promise<boolean> {
     return Effect.runPromise(this.retryLoop.request());
   }
-
   synchronize(): Promise<boolean> {
     if (!this.layoutReady) {
       new Notice("Gitbin: wait for the vault to finish loading before syncing.");
@@ -656,6 +687,7 @@ export default class GitbinPlugin extends Plugin {
     return this.enqueue(() =>
       Effect.gen({ self: this }, function* () {
         this.setStatus("Syncing…");
+        this.activity?.record("Sync started");
         const engine = yield* this.openEngine();
         const result = yield* engine.sync();
         this.ui.update({ history: engine.history(), historyWarning: result.historyWarning });
@@ -671,6 +703,10 @@ export default class GitbinPlugin extends Plugin {
           yield* io("Cannot save the sync checkpoint.", () => this.saveData(this.config));
           this.ui.update({ pending: result.pending });
         }
+        this.activity?.record(
+          result.pending ? "Sync finished with changes still pending" : "Sync completed",
+          result.pending ? "warning" : "success",
+        );
         this.setStatus(result.pending ? "Some changes remain on this device" : "Synced");
       }).pipe(
         Effect.ensuring(
@@ -681,7 +717,6 @@ export default class GitbinPlugin extends Plugin {
       ),
     );
   }
-
   private savePending = Effect.fn("plugin.savePending")(function* (
     this: GitbinPlugin,
     changed: boolean,
@@ -705,7 +740,6 @@ export default class GitbinPlugin extends Plugin {
   private captureReady(): boolean {
     return captureReady(this.layoutReady, this.attached, this.engine !== undefined);
   }
-
   private scheduleCapture(path?: string): void {
     if (this.stopped || !this.captureReady()) return;
     if (path === undefined) this.capturePaths = undefined;
@@ -726,7 +760,6 @@ export default class GitbinPlugin extends Plugin {
       );
     }, 500);
   }
-
   private scheduleUpload(): void {
     window.clearTimeout(this.uploadTimer);
     this.uploadTimer = undefined;
@@ -736,7 +769,6 @@ export default class GitbinPlugin extends Plugin {
       void Effect.runPromise(this.retryLoop.wake());
     }, this.config.uploadDelay);
   }
-
   override onunload(): void {
     this.stopped = true;
     this.consolidationModal?.close();

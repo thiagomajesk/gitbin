@@ -23,6 +23,15 @@
     "verified": [],
     "boundary": "Schema/URL validation, thrown errors, current UI store reads and async connection; JSON payload decoding is outside the verified subset."
   },
+  "src/core/activity-level.ts": {
+    "digest": "4401ba488067da20da38caba4a9ab21f54794ba339e163f1cd8f9672edc884f8",
+    "verified": ["activityLevel"]
+  },
+  "src/core/activity.ts": {
+    "digest": "56dd2a209df70a3228682f9a28ad4d028456ba431ea1fd6948322fe1c14b1a43",
+    "verified": [],
+    "boundary": "Effect log emission, regular-expression credential redaction, string replacement and Error cause traversal with Set cycle detection. Regex and Error object semantics are outside the translator; tested with credential leakage and nested rejection cases."
+  },
   "src/core/availability.ts": {
     "digest": "db0b246c2228c222f75992a678be6704deaf8117350c3cf97b68366034582d93",
     "verified": [],
@@ -160,8 +169,13 @@
     "verified": [],
     "boundary": "Effect filesystem operations and mutable entry, pin, staging and intent sets. Eviction rechecks actual file bytes and protects unsynced/open/pinned entries; the prover does not model filesystem races, disk usage or mutable graph reachability."
   },
+  "src/core/selective-download.ts": {
+    "digest": "d26232297daf265bb75489e8af1a877a1a130d5070c254903ef3d5d981e2a3cb",
+    "verified": [],
+    "boundary": "Effect admission and working-space orchestration over file references and mutable cache state. Numeric admission and storage calculations delegate to verified downloadAdmission/downloadSpace; cache availability and I/O are tested at the service boundary."
+  },
   "src/core/selective-engine.ts": {
-    "digest": "d7a674a9045a195d069fda1fb6aebc9c164362130fb95bd48aaef6a4cccfeb7f",
+    "digest": "ada365a42af98ae17f5fb9dbb1045ff077e868b1133f9a81098e702827ebb831",
     "verified": [],
     "boundary": "Effect lifecycle, Schema decoding, iterative remote reconciliation, mutable availability and history state. Failure/restart and cross-device behavior are integration-tested; this is not a formal model of asynchronous execution."
   },
@@ -186,7 +200,7 @@
     "boundary": "Interfaces only; Effect services, native Uint8Array values and schema-inferred domain types declare adapter boundaries."
   },
   "src/core/selective-publish.ts": {
-    "digest": "92f09f45eadc4209f784a901494994f0bf812bcdbf120f15e20110816c657c8c",
+    "digest": "48bbbfb8767fc5bd1ebc72f668a4f100df8a86a8b3988137a2ebae7159cf3624",
     "verified": [],
     "boundary": "Effect Git publication, mutable Map batch construction and remote compare-and-swap acknowledgements. Network state, object storage and journal durability are adapter properties, tested against a real disposable Git server."
   },
@@ -206,7 +220,7 @@
     "boundary": "Yjs decoding and destruction; resulting layout selection delegates to verified stateLocation."
   },
   "src/git/catalog.ts": {
-    "digest": "d681281a616800524a8bc3da8b1f6c7d5835c2ca30ffea57aa32095d2fd369c8",
+    "digest": "81e3ed5b02406533b7ef37d7bc1a59e25bd52b7c6d0c2e30849ef0797f2548e9",
     "verified": [],
     "boundary": "Effect inventory discovery and bounded Git object retrieval; validates metadata, paths and cryptographic identities. Admission and downloads run through the selective engine. Network I/O, Map traversal and hashing are outside the translator model."
   },
@@ -244,7 +258,7 @@
     "boundary": "Effect construction of catalog and maintenance services with URL parsing and validation. Git/network effects are delegated to those services; no status subtree comparison remains."
   },
   "src/git/selective.ts": {
-    "digest": "9c9ff4dc2b602809a61a353ba01dce2ef9e7821af20ebe53b84ef6c35051a7a1",
+    "digest": "4eb96f9087097812e927d37e9e66bcef8d850b3d40928ef63a0f14d100117012",
     "verified": [],
     "boundary": "Promise Git tree/object operations and Effect compare-and-swap publication. Managed path checks delegate to the verified hiddenPath predicate. Git object-store and network semantics are not modeled by the translator."
   },
@@ -264,7 +278,7 @@
     "boundary": "RegExp storage-layout parser, Set aggregation, sorting and throwing validation; regex and sorting implementation are not proved."
   },
   "src/main.ts": {
-    "digest": "e255f5d1576bcebf5110f3e507e5c6cb26436c70ec53db98ca8c7891576c2789",
+    "digest": "ac98f50e150dc2d3736078e57dfd2b4f14467e56c2fcd3e3e6a75580916cc1b7",
     "verified": [],
     "boundary": "Obsidian plugin lifecycle, mutable instance state and Effect/Promise execution. Readiness and outcome decisions are delegated to verified sync-decisions; callbacks remain framework adapters."
   },
@@ -338,6 +352,11 @@
     "verified": [],
     "boundary": "RegExp relocation, JSON/schema recovery, bytes and mutable file maps; no model of parsing failures."
   },
+  "src/platform/activity-log.ts": {
+    "digest": "b4415748ff66a79779f29cd2131d8e892a604f84db5afc8458c19f7d0d18efff",
+    "verified": [],
+    "boundary": "Obsidian DataAdapter persistence, Effect Logger callbacks, Schema decoding, bounded arrays of object records and serialized Promise writes. Mutable I/O and schema semantics are tested rather than modeled by the pure translator."
+  },
   "src/platform/consolidation.ts": {
     "digest": "3a717d219dbd9a103e42785489d86e3599bf2ba69aefd6a5c377b2c7c4ac202b",
     "verified": [],
@@ -362,6 +381,11 @@
     "digest": "717bc3f42bc59ecb078125342c1000099f5461f2d0f402c5cd87965b83d20555",
     "verified": [],
     "boundary": "Native Obsidian request serialization, Promise scheduling and deadline races. The transfer slot follows native settlement rather than caller timeout; asynchronous liveness is exercised by a controlled native-request adapter test."
+  },
+  "src/platform/lazy-download-views.ts": {
+    "digest": "0069bfedaf70ecae4792e900429d0043437baa6d530f88758bb4706c3b1b05fb",
+    "verified": [],
+    "boundary": "Obsidian FileView DOM lifecycle, native onLoadFile reload and themed progress. DOM identity, arbitrary file-type reload and error-panel behavior are exercised by tests; asynchronous native view rendering is outside the prover model."
   },
   "src/platform/lazy-editor.ts": {
     "digest": "adf291887270fd96d49a114e58f06b7329d41bc105f0cb9943707c27bbbb01c7",
@@ -399,9 +423,19 @@
     ]
   },
   "src/ui/actions.ts": {
-    "digest": "64533fe594a278b748980bc8e9c52fea2977a0148cbb2ef06ac591e373a08c20",
+    "digest": "dc29793ac0e5a174746bf2915a62ca7e8386701330fdc6b90552091de11769a5",
     "verified": [],
     "boundary": "Callbacks adapt Obsidian plugin methods to UI Promise interfaces; external plugin state and effects."
+  },
+  "src/ui/activity-entries.tsx": {
+    "digest": "ffea86fc38309295c08ac87dee26b19d9f4ce39eba3e6453268abaed1ea333fb",
+    "verified": [],
+    "boundary": "React rendering of a flat sequence of structured log records with level icons and native date formatting. DOM and object-record rendering are outside the translator; flat rows, levels and omitted metadata are tested."
+  },
+  "src/ui/activity-modal.tsx": {
+    "digest": "4bfb231d81774e33c47f13e3c98911a011f7f72acc8120b45c7fcb2315962b30",
+    "verified": [],
+    "boundary": "React subscription/rendering, native Obsidian Modal lifecycle, clipboard promises and timestamp formatting. UI and browser APIs are outside the pure translator; tests cover updates, copy field selection and action accessibility."
   },
   "src/ui/components.tsx": {
     "digest": "a2b9d7ed68cc1647383b740fba1d6a2ab668e7be9af5b62ca6ab8b1355be8342",
@@ -473,6 +507,16 @@
     "digest": "935df1c46de4d158dd5bc60871dfad5c278d7fa8c6dfe8045c484564b877ecc5",
     "verified": ["issueValue"]
   },
+  "src/ui/notice.ts": {
+    "digest": "ef0aca83da9c0580248e46b45d931932893aca471925d63e70ff4feccaa9aaae",
+    "verified": [],
+    "boundary": "Obsidian Notice and DOM icon composition using theme CSS. Framework notification lifecycle and DOM elements are outside the translator model."
+  },
+  "src/ui/progress.tsx": {
+    "digest": "ad8d14fc39b4863b85ac9c3576da8cf56c6e0521075e2e7e4fa9f6aad3181d75",
+    "verified": [],
+    "boundary": "Shared imperative DOM progress renderer and React ref callback. Browser DOM mutation, ARIA roles and CSS animation are outside the translator model; loading-panel and maintenance UI tests cover the shared component."
+  },
   "src/ui/settings.ts": {
     "digest": "d2136394d305984b3cf0f2b17ea690f84aeedde9ba60fbf437461e6115914f3a",
     "verified": [],
@@ -494,7 +538,7 @@
     "boundary": "Interfaces/types only; no runtime implementation."
   },
   "src/ui/status-decisions.ts": {
-    "digest": "675bc3507ac724077adb9205e702d8d7b5e5718b3b0af98b399a59b237e222e6",
+    "digest": "01933dd0a6be457363617de314037a5a40dcf15abf8309b92bd0851bcd7a3e1f",
     "verified": [
       "syncBlocked",
       "repositoryState",
@@ -506,7 +550,7 @@
     ]
   },
   "src/ui/store.ts": {
-    "digest": "afebd14694a9b574eac836c9ffbe0e4d2dfaf9715bb457f0a40fa3e222926838",
+    "digest": "359d869a70096ae8f262b478b6daee84da5fab433c3779eb91158471ebb572c5",
     "verified": [],
     "boundary": "Mutable closure snapshot, Partial object patches and listener callbacks; JavaScript identity and notification side effects are outside the pure model."
   },
@@ -526,7 +570,7 @@
     "boundary": "React JSX/hooks, DOM number parsing and asynchronous persistence callbacks; external UI runtime."
   },
   "src/ui/sync-status.tsx": {
-    "digest": "05875e84d83dfc70f0c87532b2759443844cbedcaa857c2215a882ee9ec6cb4f",
+    "digest": "abe398395f2e6a76f3c0318e2bb98e78e4caa19fe19e6673535d1e8c5e8efefa",
     "verified": [],
     "boundary": "React JSX/hooks, Intl.DateTimeFormat and snapshot field adapters. Status policy, descriptions, colors and blocking delegate to verified functions."
   },
@@ -534,25 +578,5 @@
     "digest": "96f5cf6e904188dc04b85dfd15c5ca24b38afc2b2e66be286de1868185fd7371",
     "verified": [],
     "boundary": "React external-store state, schema/URL checks and asynchronous connection callbacks. Saved-credential matching delegates to a verified function."
-  },
-  "src/platform/lazy-download-views.ts": {
-    "digest": "0069bfedaf70ecae4792e900429d0043437baa6d530f88758bb4706c3b1b05fb",
-    "verified": [],
-    "boundary": "Obsidian FileView DOM lifecycle, native onLoadFile reload and themed progress. DOM identity, arbitrary file-type reload and error-panel behavior are exercised by tests; asynchronous native view rendering is outside the prover model."
-  },
-  "src/ui/progress.tsx": {
-    "digest": "ad8d14fc39b4863b85ac9c3576da8cf56c6e0521075e2e7e4fa9f6aad3181d75",
-    "verified": [],
-    "boundary": "Shared imperative DOM progress renderer and React ref callback. Browser DOM mutation, ARIA roles and CSS animation are outside the translator model; loading-panel and maintenance UI tests cover the shared component."
-  },
-  "src/core/selective-download.ts": {
-    "digest": "d26232297daf265bb75489e8af1a877a1a130d5070c254903ef3d5d981e2a3cb",
-    "verified": [],
-    "boundary": "Effect admission and working-space orchestration over file references and mutable cache state. Numeric admission and storage calculations delegate to verified downloadAdmission/downloadSpace; cache availability and I/O are tested at the service boundary."
-  },
-  "src/ui/notice.ts": {
-    "digest": "ef0aca83da9c0580248e46b45d931932893aca471925d63e70ff4feccaa9aaae",
-    "verified": [],
-    "boundary": "Obsidian Notice and DOM icon composition using theme CSS. Framework notification lifecycle and DOM elements are outside the translator model."
   }
 }

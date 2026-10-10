@@ -177,7 +177,7 @@ describe("sync status", () => {
     expect(screen.getByText("Files waiting to sync")).toBeTruthy();
     expect(screen.getByText("abcdef12")).toBeTruthy();
     act(() => actions.store.update({ stale: true }));
-    expect(screen.getByText("Last known state")).toBeTruthy();
+    expect(screen.getByText("Sync pending")).toBeTruthy();
     expect(screen.queryByText("All changes synced")).toBeNull();
   });
 });

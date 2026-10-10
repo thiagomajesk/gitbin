@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { reportProgress } from "./activity";
 import type { AvailabilityEntry } from "./availability";
 import { SyncError } from "./errors";
 import type { ObjectReference } from "./inventory";
@@ -38,6 +39,10 @@ export const publishSelective = Effect.fn("selective.publishBatch")(function* (
 ) {
   const next = batch(ctx, snapshot);
   if (next.entries.length === 0) return { published: true, revision: snapshot.revision, count: 0 };
+  yield* reportProgress(
+    "Preparing local changes…",
+    next.entries.length + " files · " + next.bytes.toLocaleString() + " bytes",
+  );
   yield* ctx.reserve(
     next.bytes * 2 + new TextEncoder().encode(JSON.stringify(next.files)).length * 2 + 65536,
   );
@@ -54,6 +59,7 @@ export const publishSelective = Effect.fn("selective.publishBatch")(function* (
     }
     const result = yield* ctx.remote.publish(snapshot, ctx.vault, next.files);
     if (result.published) {
+      yield* reportProgress("Local changes uploaded", next.entries.length + " files");
       for (const entry of next.entries) {
         entry.base = entry.file;
         entry.consolidationHash = snapshot.consolidationHash;

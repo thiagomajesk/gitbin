@@ -29,12 +29,12 @@ export function syncState(
   //@ ensures !connected ==> \result === "Not connected"
   //@ ensures connected && error ==> \result === (issue === null ? "Last sync failed" : issue)
   //@ ensures connected && !error && status === "Syncing…" ==> \result === "Syncing your changes"
-  //@ ensures connected && !error && status !== "Syncing…" && stale ==> \result === (status.startsWith("Offline") ? "Working offline" : "Last known state")
+  //@ ensures connected && !error && status !== "Syncing…" && stale ==> \result === (status.startsWith("Offline") ? "Working offline" : "Sync pending")
   //@ ensures connected && !error && status !== "Syncing…" && !stale ==> \result === (pending ? "Files waiting to sync" : repository)
   if (!connected) return "Not connected";
   if (error) return issue === null ? "Last sync failed" : issue;
   if (status === "Syncing…") return "Syncing your changes";
-  if (stale) return status.startsWith("Offline") ? "Working offline" : "Last known state";
+  if (stale) return status.startsWith("Offline") ? "Working offline" : "Sync pending";
   if (pending) return "Files waiting to sync";
   return repository;
 }

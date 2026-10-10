@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import type { GitRepo } from "just-git";
 import { createCommit, readCommit, updateTree, writeTree } from "just-git/repo";
+import { reportProgress } from "../core/activity";
 import { attempt, io } from "../core/errors";
 import {
   type InventoryFile,
@@ -111,6 +112,7 @@ export function createSelectiveRemote(connection: Connection): SelectiveRemote {
       build(fetched.repo, base, vault, files, connection),
     );
     if (!revision || revision === base.revision) return { published: true, revision };
+    yield* reportProgress("Uploading local changes…");
     return yield* io("Cannot upload local changes. They remain saved on this device.", async () => {
       try {
         await session.run(["push", "origin", "refs/heads/main:refs/heads/main"]);

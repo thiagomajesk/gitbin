@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { readBlob } from "just-git/repo";
+import { reportProgress } from "../core/activity";
 import { attempt, io, SyncError } from "../core/errors";
 import {
   decodeInventory,
@@ -125,6 +126,7 @@ export function contentCatalog(session: ReturnType<typeof gitSession>) {
       if (!Number.isSafeInteger(limit) || limit < 0 || reference.bytes > limit)
         throw new Error("Object exceeds this device's download limit.");
     });
+    yield* reportProgress("Downloading…");
     const bytes = yield* io("Cannot download this file. Connect and try again.", () =>
       boundedBlob(reference.hash, limit),
     );
