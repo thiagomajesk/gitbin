@@ -1,5 +1,5 @@
-import type { DataAdapter } from "obsidian";
 import type { FileSystem } from "just-git";
+import type { DataAdapter } from "obsidian";
 import { ensureFolder, validateStoragePath } from "./storage";
 
 export function gitCache(adapter: DataAdapter, directory: string): FileSystem {

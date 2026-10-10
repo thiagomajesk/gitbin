@@ -1,9 +1,9 @@
-import { useState, useSyncExternalStore } from "react";
 import { Schema } from "effect";
-import { CommitEmail } from "../core/config";
+import { useState, useSyncExternalStore } from "react";
 import { establishConnection } from "../auth/connect";
-import { checkRemote } from "../git/remote";
 import type { Authentication } from "../auth/credentials";
+import { CommitEmail } from "../core/config";
+import { checkRemote } from "../git/remote";
 import type { SetupActions } from "./setup-types";
 
 function matchingSavedCredentials(remote: string, username: string, saved: Authentication | null) {

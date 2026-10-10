@@ -1,9 +1,9 @@
-import { CheckpointFile } from "./checkpoint";
-import { Metadata } from "./metadata";
 import { Effect, Schema } from "effect";
-import { SyncError } from "./errors";
-import type { FileContent } from "./content";
 import { BlobId, StoredContent } from "./blobs";
+import { CheckpointFile } from "./checkpoint";
+import type { FileContent } from "./content";
+import { SyncError } from "./errors";
+import { Metadata } from "./metadata";
 
 const Id = Schema.String.check(Schema.isPattern(/^[a-f0-9-]{36}$/));
 export const Registration = Schema.Struct({

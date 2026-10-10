@@ -1,7 +1,7 @@
-import type { SyncIssue } from "./sync-issue";
-import type { VaultStatus } from "../git/status";
 import type { Config } from "../core/config";
 import type { HistoryEntry } from "../core/history";
+import type { VaultStatus } from "../git/status";
+import type { SyncIssue } from "./sync-issue";
 
 export interface UiSnapshot {
   readonly history?: ReadonlyArray<HistoryEntry>;

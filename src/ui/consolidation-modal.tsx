@@ -1,6 +1,6 @@
-import { Modal, type App } from "obsidian";
-import { createRoot, type Root } from "react-dom/client";
+import { type App, Modal } from "obsidian";
 import { flushSync } from "react-dom";
+import { createRoot, type Root } from "react-dom/client";
 import { ConsolidationPanel, type ConsolidationSummary } from "./consolidation-panel";
 export class ConsolidationModal extends Modal {
   private root: Root | undefined;

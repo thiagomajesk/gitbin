@@ -1,7 +1,7 @@
-import { Schema } from "effect";
 import { sha1 } from "@noble/hashes/legacy.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { type FileContent, contentBytes, binaryContent } from "./content";
+import { Schema } from "effect";
+import { binaryContent, contentBytes, type FileContent } from "./content";
 
 export const BlobId = Schema.String.check(Schema.isPattern(/^[a-f0-9]{40}$/));
 const BinaryReference = Schema.Struct({

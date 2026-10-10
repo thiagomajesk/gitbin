@@ -1,4 +1,5 @@
 import type { DataAdapter } from "obsidian";
+
 function invalidSegment(part: string): boolean {
   return part === ".." || part === "." || !part;
 }

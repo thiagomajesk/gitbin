@@ -1,4 +1,4 @@
-import { validateVaults, type Registration } from "../core/protocol";
+import { type Registration, validateVaults } from "../core/protocol";
 export function discoverVaults(entries: ReadonlyMap<string, string>): ReadonlyArray<Registration> {
   const roots = new Set<string>();
   for (const path of entries.keys()) {

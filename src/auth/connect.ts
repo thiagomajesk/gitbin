@@ -1,7 +1,8 @@
 import type { SyncPreferences } from "../core/config";
 import { checkRoot, validateVaults } from "../core/protocol";
+import type { RepositoryInspection, SetupActions } from "../ui/setup-types";
 import type { Authentication } from "./credentials";
-import type { SetupActions, RepositoryInspection } from "../ui/setup-types";
+
 function vaultConfig(
   actions: SetupActions,
   authentication: Authentication,

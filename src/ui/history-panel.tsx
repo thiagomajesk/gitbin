@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { UiStore } from "./store";
-import { SyncHistory, type HistorySelection } from "./sync-history";
+import { type HistorySelection, SyncHistory } from "./sync-history";
 export function HistoryPanel({
   store,
   openFile,

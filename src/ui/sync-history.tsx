@@ -1,8 +1,8 @@
-import { memo, useDeferredValue, useId, useMemo, useState, type ReactNode } from "react";
+import { Primitive } from "@radix-ui/react-primitive";
 import { Eye, FileText, SquareDot, SquareMinus, SquarePlus } from "lucide-react";
+import { memo, type ReactNode, useDeferredValue, useId, useMemo, useState } from "react";
 import type { FileChange, HistoryEntry } from "../core/history";
 import { Button, Link } from "./controls";
-import { Primitive } from "@radix-ui/react-primitive";
 
 export type HistorySelection = { readonly entry: HistoryEntry; readonly change: FileChange | null };
 function fileName(change: FileChange): string {

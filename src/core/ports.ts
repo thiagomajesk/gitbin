@@ -1,8 +1,8 @@
 import type { Effect } from "effect";
-import type { SyncError } from "./errors";
-import type { Journal, Registration } from "./protocol";
-import type { HistoryState } from "./history";
 import type { FileContent } from "./content";
+import type { SyncError } from "./errors";
+import type { HistoryState } from "./history";
+import type { Journal, Registration } from "./protocol";
 
 export interface LocalVault {
   loadBlobs(ids: readonly string[]): Effect.Effect<ReadonlyMap<string, FileContent>, SyncError>;

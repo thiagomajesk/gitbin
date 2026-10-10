@@ -1,11 +1,11 @@
 import { Schema } from "effect";
-import { CredentialSchema } from "./credentials";
-import { CommitEmail, SyncPreferencesSchema, type Config } from "../core/config";
-import type { Authentication } from "./credentials";
+import { CommitEmail, type Config, SyncPreferencesSchema } from "../core/config";
 import { checkRoot } from "../core/protocol";
 import { checkRemote } from "../git/remote";
-import { establishConnection } from "./connect";
 import type { SetupActions } from "../ui/setup-types";
+import { establishConnection } from "./connect";
+import type { Authentication } from "./credentials";
+import { CredentialSchema } from "./credentials";
 
 const SetupSchema = Schema.Struct({
   version: Schema.Literal(1),

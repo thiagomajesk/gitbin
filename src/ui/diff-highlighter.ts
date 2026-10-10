@@ -1,6 +1,7 @@
 // Bundle only the Markdown grammar used by vault history and an Obsidian CSS theme.
 import { createBundledHighlighter, createSingletonShorthands } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
+
 export * from "shiki/core";
 export { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 export { createOnigurumaEngine } from "shiki/engine/oniguruma";

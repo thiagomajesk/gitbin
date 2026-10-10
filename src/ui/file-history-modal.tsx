@@ -1,8 +1,8 @@
+import { type App, Modal } from "obsidian";
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Modal, type App } from "obsidian";
-import type { HistorySelection } from "./sync-history";
 import { FileHistory } from "./file-history";
+import type { HistorySelection } from "./sync-history";
 
 export class FileHistoryModal extends Modal {
   private root: Root | undefined;

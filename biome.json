@@ -4,6 +4,8 @@
     "includes": [
       "src/**",
       "tests/**",
+      "tooling/**",
+      "*.mjs",
       "*.json",
       "*.ts",
       "!!**/node_modules",
@@ -13,7 +15,10 @@
   },
   "formatter": {
     "indentStyle": "space",
-    "lineWidth": 100
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "trailingNewline": true
   },
   "linter": {
     "enabled": true,
@@ -32,11 +37,30 @@
     }
   },
   "assist": {
-    "enabled": false
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "css": {
     "parser": {
       "tailwindDirectives": true
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "jsxQuoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
     }
   }
 }

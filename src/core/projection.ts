@@ -1,8 +1,8 @@
-import { contentEqual, contentHash, type FileContent } from "./content";
 import { BinaryObjects } from "./blobs";
+import { contentEqual, contentHash, type FileContent } from "./content";
 import { FileDocument } from "./file";
 import type { RemoteSnapshot } from "./ports";
-import { type WriteIntent, validPath } from "./protocol";
+import { validPath, type WriteIntent } from "./protocol";
 
 function remotePaths(snapshot: RemoteSnapshot): Map<string, FileContent> {
   const paths = new Map<string, FileContent>();

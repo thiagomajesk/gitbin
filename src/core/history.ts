@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { contentHash } from "./content";
 import { BinaryObjects } from "./blobs";
+import { contentHash } from "./content";
 import { FileDocument } from "./file";
 
 const FileSnapshot = Schema.Struct({

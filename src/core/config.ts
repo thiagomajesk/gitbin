@@ -1,5 +1,5 @@
-import { Registration } from "./protocol";
 import { Schema } from "effect";
+import { Registration } from "./protocol";
 
 export const CommitEmail = Schema.String.check(Schema.isPattern(/^(?:|[^\s<>@]+@[^\s<>@]+)$/));
 

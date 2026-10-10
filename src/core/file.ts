@@ -1,14 +1,14 @@
-import {
-  type FileContent,
-  contentEqual,
-  contentHash,
-  encodeBytes as encode,
-  decodeBytes as decode,
-} from "./content";
-import { BinaryObjects, StoredContent } from "./blobs";
 import { diffChars } from "diff";
 import { Schema } from "effect";
 import * as Y from "yjs";
+import { BinaryObjects, StoredContent } from "./blobs";
+import {
+  contentEqual,
+  contentHash,
+  decodeBytes as decode,
+  encodeBytes as encode,
+  type FileContent,
+} from "./content";
 import { Location, type StoredFile, validPath } from "./protocol";
 
 export class FileDocument {

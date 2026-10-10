@@ -1,9 +1,9 @@
+import { ItemView, type WorkspaceLeaf } from "obsidian";
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ItemView, type WorkspaceLeaf } from "obsidian";
 import type GitbinPlugin from "../main";
-import { HistoryPanel } from "./history-panel";
 import { FileHistoryModal } from "./file-history-modal";
+import { HistoryPanel } from "./history-panel";
 
 export const historyType = "gitbin-history";
 export class HistoryView extends ItemView {

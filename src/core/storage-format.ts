@@ -1,7 +1,7 @@
 import { Effect } from "effect";
-import { SyncError, attempt } from "./errors";
-import { Journal, decode } from "./protocol";
+import { attempt, SyncError } from "./errors";
 import { requireCurrentMetadata } from "./metadata";
+import { decode, Journal } from "./protocol";
 
 export const decodeJournal = (raw: unknown) =>
   Effect.gen(function* () {

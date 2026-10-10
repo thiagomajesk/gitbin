@@ -1,21 +1,21 @@
+import { Effect } from "effect";
+import { generate } from "lean-qr";
 import {
+  type App,
   ButtonComponent,
   Modal,
   Notice,
   ProgressBarComponent,
   TextComponent,
-  type App,
 } from "obsidian";
-import { Effect } from "effect";
-import { explain } from "../core/errors";
-import { generate } from "lean-qr";
-import { checkSetupTarget, importSetup, type SyncSetupPayload } from "../auth/setup-transfer";
 import {
   createSetupCode,
-  unlockSetupCode,
-  setupCodeRefreshMs,
   type SealedSetup,
+  setupCodeRefreshMs,
+  unlockSetupCode,
 } from "../auth/setup-code";
+import { checkSetupTarget, importSetup, type SyncSetupPayload } from "../auth/setup-transfer";
+import { explain } from "../core/errors";
 import type { SetupActions } from "./setup-types";
 
 export function drawSetupQr(

@@ -1,6 +1,6 @@
-import type { Registration } from "../core/protocol";
-import type { Config, SyncPreferences } from "../core/config";
 import type { Authentication } from "../auth/credentials";
+import type { Config, SyncPreferences } from "../core/config";
+import type { Registration } from "../core/protocol";
 import type { SyncActions } from "./store";
 export interface RepositoryInspection {
   readonly vaults: ReadonlyArray<Registration>;

@@ -1,15 +1,15 @@
-import { vaultStorageMigration } from "./vault-storage";
-import { compactRepository } from "./compact";
-import { Effect } from "effect";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { SyncError, attempt } from "../core/errors";
+import { Effect } from "effect";
+import { attempt, SyncError } from "../core/errors";
 import { migrationIds, migrationPrefix } from "../core/metadata";
 import { binaryReferencesMigration } from "./binary-references";
-import { unifiedMetadataMigration } from "./unified-metadata";
-import { repositoryVaults, validateCurrent } from "./validation";
+import { compactRepository } from "./compact";
 import { snapshotMetadata, stampMetadata } from "./metadata";
 import type { ConsolidatedData, MigrationSnapshot, StorageMigration } from "./types";
+import { unifiedMetadataMigration } from "./unified-metadata";
+import { repositoryVaults, validateCurrent } from "./validation";
+import { vaultStorageMigration } from "./vault-storage";
 
 export const storageMigrations: readonly StorageMigration[] = Object.freeze([
   binaryReferencesMigration,

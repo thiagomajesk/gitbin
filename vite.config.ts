@@ -1,9 +1,9 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { defineConfig } from "vitest/config";
 import { homedir } from "node:os";
-import { Schema } from "effect";
+import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
+import { Schema } from "effect";
+import { defineConfig } from "vitest/config";
 import manifest from "./manifest.json" with { type: "json" };
 
 function bundledPackage(id: string) {

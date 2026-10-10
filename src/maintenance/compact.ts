@@ -1,6 +1,6 @@
 import { BinaryObjects, binaryObject, blobId } from "../core/blobs";
-import { FileDocument } from "../core/file";
 import { binaryContent, contentFromBytes } from "../core/content";
+import { FileDocument } from "../core/file";
 import { statePath } from "../core/storage-layout";
 import type { MigrationSnapshot } from "./types";
 import { repositoryVaults, validateCurrent } from "./validation";

@@ -1,5 +1,5 @@
-import { useCallback, type ComponentProps } from "react";
 import { setTooltip } from "obsidian";
+import { type ComponentProps, useCallback } from "react";
 import { Button } from "./controls";
 
 export function IconButton({

@@ -1,14 +1,14 @@
-import { checkPushLease } from "./push-lease";
-import { NetworkError } from "../core/errors";
 import {
-  createGit,
-  MemoryFileSystem,
-  type FileSystem,
-  type NetworkPolicy,
   type CredentialProvider,
+  createGit,
+  type FileSystem,
   type GitContext,
+  MemoryFileSystem,
+  type NetworkPolicy,
 } from "just-git";
-import { resolveRef, fetchObjects } from "just-git/repo";
+import { fetchObjects, resolveRef } from "just-git/repo";
+import { NetworkError } from "../core/errors";
+import { checkPushLease } from "./push-lease";
 export interface Connection {
   readonly url: string;
   readonly network: NetworkPolicy & { readonly fetch: NonNullable<NetworkPolicy["fetch"]> };

@@ -1,5 +1,5 @@
-import { readCommit, readTree } from "just-git/repo";
 import type { GitRepo } from "just-git";
+import { readCommit, readTree } from "just-git/repo";
 import type { RemoteSnapshot } from "../core/ports";
 import type { Registration } from "../core/protocol";
 export interface VaultStatus {

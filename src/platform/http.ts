@@ -1,5 +1,6 @@
 import type { NetworkPolicy } from "just-git";
 import { requestUrl } from "obsidian";
+
 async function withDeadline<A>(pending: Promise<A>): Promise<A> {
   let timer: number | undefined;
   try {

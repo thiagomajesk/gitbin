@@ -1,9 +1,9 @@
+import { type App, PluginSettingTab, type SettingDefinitionItem } from "obsidian";
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { PluginSettingTab, type App, type SettingDefinitionItem } from "obsidian";
 import type GitbinPlugin from "../main";
-import { SetupForm } from "./setup-form";
 import { pluginActions } from "./actions";
+import { SetupForm } from "./setup-form";
 
 export class GitbinSettings extends PluginSettingTab {
   private root: Root | undefined;

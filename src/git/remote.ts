@@ -1,12 +1,12 @@
-import { consolidation } from "./consolidation";
-import { inspectVaults } from "./status";
 import { Effect } from "effect";
-import { SyncError, io, attempt } from "../core/errors";
+import { attempt, io, SyncError } from "../core/errors";
 import type { GitRemote, Publication, RemoteSnapshot } from "../core/ports";
-import { type Registration, checkRoot } from "../core/protocol";
-import { discoverVaults } from "./vaults";
-import { type Connection, gitSession } from "./session";
+import { checkRoot, type Registration } from "../core/protocol";
+import { consolidation } from "./consolidation";
 import { candidate, readEntries, readFiles } from "./objects";
+import { type Connection, gitSession } from "./session";
+import { inspectVaults } from "./status";
+import { discoverVaults } from "./vaults";
 export function checkRemote(remote: string): void {
   const url = new URL(remote);
   const local =

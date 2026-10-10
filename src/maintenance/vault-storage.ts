@@ -1,10 +1,10 @@
 import { Schema } from "effect";
-import { HistoryState } from "../core/history";
 import { attempt } from "../core/errors";
+import { HistoryState } from "../core/history";
 import { statePath } from "../core/storage-layout";
 import { journalData } from "./metadata";
-import { validateCurrent } from "./validation";
 import type { MigrationSnapshot, StorageMigration } from "./types";
+import { validateCurrent } from "./validation";
 
 function relocate(source: MigrationSnapshot): MigrationSnapshot {
   const files = new Map(source.files);

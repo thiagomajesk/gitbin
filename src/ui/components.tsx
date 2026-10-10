@@ -1,6 +1,6 @@
 import * as Label from "@radix-ui/react-label";
 import { Primitive } from "@radix-ui/react-primitive";
-import { useId, type ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 
 export function TextField({
   label,

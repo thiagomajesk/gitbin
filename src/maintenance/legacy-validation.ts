@@ -1,11 +1,10 @@
-import { Metadata, metadataPath } from "../core/metadata";
-import { validateVaults } from "../core/protocol";
 import { Schema } from "effect";
 import { BinaryObjects, binaryObject } from "../core/blobs";
-import { Journal } from "../core/protocol";
-import { validateRemote } from "../core/projection";
-import { FileDocument } from "../core/file";
 import { contentFromBytes, type FileContent } from "../core/content";
+import { FileDocument } from "../core/file";
+import { Metadata, metadataPath } from "../core/metadata";
+import { validateRemote } from "../core/projection";
+import { Journal, validateVaults } from "../core/protocol";
 import type { MigrationSnapshot } from "./types";
 
 function repositoryVaults(files: ReadonlyMap<string, Uint8Array>): string[] {

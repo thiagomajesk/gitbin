@@ -1,19 +1,19 @@
-import { parseStoredData } from "../core/storage-format";
-import { BlobId, blobId, binaryObject } from "../core/blobs";
 import { Schema } from "effect";
 import type { App, TFile } from "obsidian";
-import { io } from "../core/errors";
-import type { LocalVault } from "../core/ports";
-import type { Journal } from "../core/protocol";
-import type { HistoryState } from "../core/history";
-import { validPath } from "../core/protocol";
+import { BlobId, binaryObject, blobId } from "../core/blobs";
 import {
   binaryContent,
-  contentFromBytes,
   contentBytes,
   contentEqual,
+  contentFromBytes,
   type FileContent,
 } from "../core/content";
+import { io } from "../core/errors";
+import type { HistoryState } from "../core/history";
+import type { LocalVault } from "../core/ports";
+import type { Journal } from "../core/protocol";
+import { validPath } from "../core/protocol";
+import { parseStoredData } from "../core/storage-format";
 import { ensureFolder, validateStoragePath } from "./storage";
 
 export class ObsidianVault implements LocalVault {

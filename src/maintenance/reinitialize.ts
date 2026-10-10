@@ -1,10 +1,10 @@
-import { currentMetadata, metadataPath } from "../core/metadata";
-import { FileDocument } from "../core/file";
 import { contentFromBytes } from "../core/content";
-import { statePath } from "../core/storage-layout";
+import { FileDocument } from "../core/file";
+import { currentMetadata, metadataPath } from "../core/metadata";
 import { checkRoot, validateVaults, validPath } from "../core/protocol";
-import { validateCurrent } from "./validation";
+import { statePath } from "../core/storage-layout";
 import type { MigrationSnapshot } from "./types";
+import { validateCurrent } from "./validation";
 
 /** Recovery must never depend on decoding the metadata it is replacing. */
 export function reinitializeRepository(

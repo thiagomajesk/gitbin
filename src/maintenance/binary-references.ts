@@ -1,17 +1,17 @@
 import { Schema } from "effect";
 import * as Y from "yjs";
-import { attempt } from "../core/errors";
-import { BinaryObjects, StoredContent, binaryObject } from "../core/blobs";
+import { BinaryObjects, binaryObject, StoredContent } from "../core/blobs";
 import { contentBytes, decodeBytes, encodeBytes } from "../core/content";
-import type { MigrationSnapshot, StorageMigration } from "./types";
-import { validateCurrent } from "./legacy-validation";
+import { attempt } from "../core/errors";
 import { currentMetadata, migrationIds } from "../core/metadata";
+import { validateCurrent } from "./legacy-validation";
 import {
   legacyVersion,
   normalizeLegacyMetadata,
   snapshotMetadata,
   stampMetadata,
 } from "./metadata";
+import type { MigrationSnapshot, StorageMigration } from "./types";
 
 const LegacyContent = Schema.Struct({
   type: Schema.Literals(["text", "binary"]),

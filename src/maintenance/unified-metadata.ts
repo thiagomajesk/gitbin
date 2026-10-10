@@ -1,8 +1,8 @@
 import { attempt } from "../core/errors";
 import { currentMetadata, migrationIds } from "../core/metadata";
+import { validateCurrent } from "./legacy-validation";
 import { journalData, normalizeLegacyMetadata, snapshotMetadata, stampMetadata } from "./metadata";
 import type { StorageMigration } from "./types";
-import { validateCurrent } from "./legacy-validation";
 
 export const unifiedMetadataMigration: StorageMigration = {
   id: "unified-metadata",
