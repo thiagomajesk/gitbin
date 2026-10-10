@@ -56,6 +56,12 @@ Gitbin uses a Git repository to sync your vault's files between devices and CRDT
 | `pnpm lint:obsidian` | Run the official Obsidian ESLint rules with no warnings. |
 | `pnpm analyze` | Check for dead code with Fallow. |
 | `pnpm analyze:health` | Check complexity and code health with Fallow. |
+| `pnpm analyze:duplicates` | Check code duplication with Fallow. |
+| `pnpm proof:setup` | Install the pinned proof tools before the first proof check or after toolchain changes. |
+| `pnpm proof:regen` | Regenerate proof artifacts after verified source changes. |
+| `pnpm proof:coverage` | Check that production source changes have a matching proof review. |
+| `pnpm proof` | Verify production contracts and check reviewed source coverage. |
+| `pnpm proof:mutations` | Check that broken implementations fail verification. |
 | `pnpm quality` | Run all checks, tests, and the production build. |
 
 ### Consolidation and migrations

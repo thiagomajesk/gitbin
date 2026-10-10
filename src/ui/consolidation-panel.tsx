@@ -1,6 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./controls";
+import { acknowledgementsAccepted } from "./status-decisions";
 export interface ConsolidationSummary {
   readonly reinitialize?: boolean;
   readonly vaults: readonly string[];
@@ -16,7 +17,7 @@ export function ConsolidationPanel({
 }) {
   const action = summary.reinitialize ? "Reinitialize" : "Consolidate";
   const [acknowledgements, setAcknowledgements] = useState([false, false, false]);
-  const accepted = acknowledgements.every(Boolean);
+  const accepted = acknowledgementsAccepted(acknowledgements);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");

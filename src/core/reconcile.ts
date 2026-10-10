@@ -3,6 +3,7 @@ import type { CheckpointFile } from "./checkpoint";
 import { contentEqual, contentHash, type FileContent } from "./content";
 import { FileDocument } from "./file";
 import type { RemoteSnapshot } from "./ports";
+import { conflict, rebasedEdit, unchangedCheckpoint } from "./reconcile-decisions";
 
 function pathOf(file: FileDocument): string | null {
   return file.locations().find(([, location]) => location.path !== null)?.[1].path ?? null;
@@ -13,12 +14,12 @@ function copyLocal(file: FileDocument, blobs: BinaryObjects): FileDocument {
   copy.move(pathOf(file));
   return copy;
 }
-function conflict<T>(local: T, incoming: T, base: T | undefined): boolean {
-  return local !== base && incoming !== base && local !== incoming;
-}
+
 function replayDelete(remote: FileDocument, base: CheckpointFile | undefined): void {
-  if (base && contentHash(remote.content) === base.hash && pathOf(remote) === base.path)
-    remote.move(null);
+  if (!base) return;
+  const hash = contentHash(remote.content);
+  if (hash !== base.hash) return;
+  if (unchangedCheckpoint(true, hash, base.hash, pathOf(remote), base.path)) remote.move(null);
 }
 function replayPresent(
   local: FileDocument,
@@ -28,9 +29,10 @@ function replayPresent(
 ): FileDocument | null {
   const path = pathOf(local);
   const hash = contentHash(local.content);
+  const baseline = base ?? { hash: null, path: null };
   if (
-    conflict(hash, contentHash(remote.content), base?.hash) ||
-    conflict(path, pathOf(remote), base?.path)
+    conflict(hash, contentHash(remote.content), baseline.hash, base !== undefined) ||
+    conflict(path, pathOf(remote), baseline.path, base !== undefined)
   )
     return copyLocal(local, blobs);
   if (hash !== base?.hash) remote.edit(local.content);
@@ -44,7 +46,8 @@ function replay(
   blobs: BinaryObjects,
 ): FileDocument | null {
   const path = pathOf(local);
-  if (base && base.hash === contentHash(local.content) && base.path === path) return null;
+  if (base && unchangedCheckpoint(true, contentHash(local.content), base.hash, path, base.path))
+    return null;
   if (path === null) {
     if (remote) replayDelete(remote, base);
     return null;
@@ -108,12 +111,19 @@ export function captureRebasedEdit(
   states: Map<string, FileDocument>,
   blobs: BinaryObjects,
 ): boolean {
-  if (file.baselineState !== null || file.baselinePath === null) return false;
-  const value = disk.get(file.baselinePath);
+  const path = file.baselinePath;
+  const value = file.baselineState === null && path !== null ? disk.get(path) : undefined;
+  const diskMatches = value === undefined || contentEqual(value, file.baselineContent);
+  const remoteMatches = diskMatches || contentEqual(file.content, file.baselineContent);
   if (
     !value ||
-    contentEqual(value, file.baselineContent) ||
-    contentEqual(file.content, file.baselineContent)
+    !rebasedEdit(
+      file.baselineState !== null,
+      path !== null,
+      value !== undefined,
+      diskMatches,
+      remoteMatches,
+    )
   )
     return false;
   const copy = new FileDocument(crypto.randomUUID(), undefined, blobs);

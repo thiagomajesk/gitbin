@@ -6,3 +6,8 @@ coverage/
 
 .env.local
 .env.*.local
+
+.tools/
+.lemmascript/
+*.dfy.base
+*.dfy.merged

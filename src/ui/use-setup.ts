@@ -1,17 +1,12 @@
 import { Schema } from "effect";
 import { useState, useSyncExternalStore } from "react";
 import { establishConnection } from "../auth/connect";
+import { matchingSavedCredentials } from "../auth/credential-decisions";
 import type { Authentication } from "../auth/credentials";
 import { CommitEmail } from "../core/config";
 import { checkRemote } from "../git/remote";
 import type { SetupActions } from "./setup-types";
 
-function matchingSavedCredentials(remote: string, username: string, saved: Authentication | null) {
-  if (saved?.remote !== remote) return null;
-  const credentials = saved.credentials;
-  if (credentials && credentials.username !== username) return null;
-  return credentials;
-}
 function connectionInput(
   remoteInput: string,
   usernameInput: string,

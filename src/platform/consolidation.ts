@@ -6,6 +6,7 @@ import { Journal } from "../core/protocol";
 import type { ConsolidationPreview } from "../git/consolidation";
 import type { MigrationSnapshot } from "../maintenance/types";
 import { ensureFolder } from "./storage";
+import { installableJournal } from "./sync-decisions";
 
 export function maintenanceStorage(app: App, directory: string) {
   const adapter = app.vault.adapter;
@@ -81,7 +82,7 @@ export function maintenanceStorage(app: App, directory: string) {
     const record = await pending();
     if (!record) return;
     const current = (await adapter.exists(journalPath)) ? await adapter.read(journalPath) : null;
-    if (current !== null && current !== record.original && current !== record.migrated)
+    if (!installableJournal(current, record.original, record.migrated))
       throw new Error("Local journal changed. Consolidation checkpoint preserved for recovery.");
     if (record.migrated) {
       Schema.decodeUnknownSync(Journal)(JSON.parse(record.migrated));

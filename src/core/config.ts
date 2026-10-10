@@ -56,7 +56,3 @@ export function loadConfig(raw: unknown): Config {
   if (raw === null || raw === undefined) return defaults();
   return Schema.decodeUnknownSync(ConfigSchema, { onExcessProperty: "error" })(raw);
 }
-export const connectionChanged = (left: Config, right: Config): boolean =>
-  (["remote", "root", "username", "commitEmail", "secretId"] as const).some(
-    (key) => left[key] !== right[key],
-  );

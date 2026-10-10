@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 import type { CredentialProvider } from "just-git";
+import { credentialScope } from "./credential-decisions";
 export const CredentialSchema = Schema.Struct({
   type: Schema.Literal("basic"),
   username: Schema.String,
@@ -17,7 +18,7 @@ export function scopedCredentials(
   const expected = new URL(remote);
   return (requested) => {
     const url = new URL(requested);
-    if (url.origin !== expected.origin || url.pathname !== expected.pathname) return null;
+    if (!credentialScope(expected.origin, expected.pathname, url.origin, url.pathname)) return null;
     return credentials;
   };
 }

@@ -3,6 +3,7 @@ import { buildCommit, flattenTree, readBlob, readCommit } from "just-git/repo";
 import { binaryObject, blobId } from "../core/blobs";
 import { contentBytes, contentFromBytes, type FileContent } from "../core/content";
 import { currentMetadata, metadataPath, requireCurrentMetadata } from "../core/metadata";
+import { hiddenPath, safeStoragePath } from "../core/path-rules";
 import type { Publication, RemoteSnapshot } from "../core/ports";
 import { validateRemote } from "../core/projection";
 import { type Registration, validateVaults, validPath } from "../core/protocol";
@@ -13,12 +14,7 @@ export async function readEntries(repo: GitRepo, revision: string, vault: Regist
   const commit = await readCommit(repo, revision);
   const entries = await flattenTree(repo, commit.tree);
   for (const entry of entries) {
-    if (
-      entry.path
-        .split("/")
-        .some((part) => !part || part === "." || part === ".." || part.includes("\\"))
-    )
-      throw new Error("Unsafe Git tree path.");
+    if (!safeStoragePath(entry.path)) throw new Error("Unsafe Git tree path.");
     const relevant =
       entry.path.startsWith(".gitbin/") ||
       entry.path === vault.root ||
@@ -55,7 +51,7 @@ function partitionEntries(
       stateHashes.set(name.slice(0, -4), hash);
     } else if (path.startsWith(`${vault.root}/`)) {
       const relative = path.slice(vault.root.length + 1);
-      if (!relative.split("/").some((part) => part.startsWith("."))) fileHashes.set(relative, hash);
+      if (!hiddenPath(relative)) fileHashes.set(relative, hash);
     }
   }
   return { blobHashes, stateHashes, fileHashes };

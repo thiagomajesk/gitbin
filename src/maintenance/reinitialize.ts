@@ -1,6 +1,7 @@
 import { contentFromBytes } from "../core/content";
 import { FileDocument } from "../core/file";
 import { currentMetadata, metadataPath } from "../core/metadata";
+import { hiddenPath, metadataEntry } from "../core/path-rules";
 import { checkRoot, validateVaults, validPath } from "../core/protocol";
 import { statePath } from "../core/storage-layout";
 import type { MigrationSnapshot } from "./types";
@@ -20,15 +21,13 @@ export function reinitializeRepository(
   });
   const vaults = [...new Set([...roots, ...discovered])];
   validateVaults(vaults.map((root) => ({ root, name: root })));
-  const files = new Map(
-    [...source.files].filter(([path]) => path !== ".gitbin" && !path.startsWith(".gitbin/")),
-  );
+  const files = new Map([...source.files].filter(([path]) => !metadataEntry(path)));
   files.set(metadataPath, new TextEncoder().encode(JSON.stringify(currentMetadata())));
   for (const root of vaults) {
     for (const [path, bytes] of source.files) {
       if (!path.startsWith(root + "/")) continue;
       const relative = path.slice(root.length + 1);
-      if (relative.split("/").some((part) => part.startsWith("."))) continue;
+      if (hiddenPath(relative)) continue;
       if (!validPath(relative)) throw new Error("Unsupported vault file path: " + relative);
       const file = new FileDocument(crypto.randomUUID());
       try {

@@ -1,23 +1,16 @@
 import { LoaderCircle, RefreshCw } from "lucide-react";
 import { useId, useState, useSyncExternalStore } from "react";
 import { IconButton } from "./icon-button";
+import {
+  manualStatus,
+  repositoryState,
+  statusColor,
+  statusDescription,
+  syncBlocked,
+  syncState,
+} from "./status-decisions";
 import type { SyncActions, UiSnapshot } from "./store";
 
-function syncState(snapshot: UiSnapshot): string {
-  if (!snapshot.config.setupComplete) return "Not connected";
-  if (snapshot.error) return snapshot.issue?.title ?? "Last sync failed";
-  if (snapshot.status === "Syncing…") return "Syncing your changes";
-  if (snapshot.stale)
-    return snapshot.status.startsWith("Offline") ? "Working offline" : "Last known state";
-  if (snapshot.pending) return "Files waiting to sync";
-  return repositoryState(snapshot);
-}
-function repositoryState(snapshot: UiSnapshot): string {
-  const current = snapshot.vaults?.find((row) => row.connected);
-  if (current?.changed === null) return "Not verified";
-  if (current?.changed) return "Files waiting to sync";
-  return snapshot.config.lastSync ? "All changes synced" : "Connected";
-}
 function time(value: number | null | undefined): string {
   return value
     ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(value)
@@ -50,11 +43,7 @@ function StatusRow({
   readonly warning: boolean;
 }) {
   const descriptionId = useId();
-  const color = warning
-    ? "gitbin-status-warning"
-    : status === "All changes synced"
-      ? "gitbin-status-current"
-      : undefined;
+  const color = statusColor(warning, status);
   return (
     <div className="gitbin-sync-status-group">
       <dt>Status</dt>
@@ -71,17 +60,13 @@ function StatusRow({
     </div>
   );
 }
-function syncBlocked(snapshot: UiSnapshot): boolean {
-  return snapshot.issue?.kind === "migration-required" || snapshot.issue?.kind === "newer-format";
-}
+
 export function SyncStatus({ actions }: { readonly actions: SyncActions }) {
   const headingId = useId();
   const snapshot = useSyncExternalStore(actions.store.subscribe, actions.store.getSnapshot);
   const manual = useManualSync(actions);
   const busy = manual.pending || snapshot.status === "Syncing…";
-  const status = manual.error && !snapshot.error ? "Last sync failed" : syncState(snapshot);
-  const statusInfo = statusDescription(snapshot, manual.error);
-  const blocked = syncBlocked(snapshot);
+  const { status, statusInfo, blocked } = snapshotStatus(snapshot, manual.error);
   return (
     <section aria-labelledby={headingId} className="setting-group gitbin-sync-status">
       <div className="gitbin-settings-header">
@@ -138,6 +123,27 @@ function SyncDetails({ snapshot }: { readonly snapshot: UiSnapshot }) {
   );
 }
 
-function statusDescription(snapshot: UiSnapshot, manualError: string | null): string | null {
-  return snapshot.issue?.message ?? snapshot.error ?? manualError;
+function snapshotState(snapshot: UiSnapshot): string {
+  const current = snapshot.vaults?.find((row) => row.connected);
+  return syncState(
+    snapshot.config.setupComplete,
+    Boolean(snapshot.error),
+    snapshot.issue?.title ?? null,
+    snapshot.status,
+    snapshot.stale ?? false,
+    snapshot.pending ?? false,
+    repositoryState(
+      current !== undefined,
+      current?.changed ?? null,
+      Boolean(snapshot.config.lastSync),
+    ),
+  );
+}
+
+function snapshotStatus(snapshot: UiSnapshot, error: string | null) {
+  return {
+    status: manualStatus(Boolean(error), Boolean(snapshot.error), snapshotState(snapshot)),
+    statusInfo: statusDescription(snapshot.issue?.message ?? null, snapshot.error, error),
+    blocked: syncBlocked(snapshot.issue?.kind ?? null),
+  };
 }

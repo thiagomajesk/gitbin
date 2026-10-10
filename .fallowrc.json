@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": ["src/main.ts", "src/ui/diff-highlighter.ts", "tests/**/*.test.{ts,tsx}"],
-  "ignorePatterns": ["dist/**", "coverage/**", "node_modules/**", ".fallow/**"],
+  "ignorePatterns": ["dist/**", "coverage/**", "node_modules/**", ".fallow/**", ".tools/**"],
   "ignoreDependencies": ["obsidian"],
   "usedClassMembers": ["onload", "onunload", "display", "onOpen", "onClose"],
   "typeAware": {

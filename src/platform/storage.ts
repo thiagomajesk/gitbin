@@ -1,16 +1,8 @@
 import type { DataAdapter } from "obsidian";
+import { safeStoragePath } from "../core/path-rules";
 
-function invalidSegment(part: string): boolean {
-  return part === ".." || part === "." || !part;
-}
 export function validateStoragePath(path: string): void {
-  const invalid = [
-    !path,
-    path.startsWith("/"),
-    path.includes("\\"),
-    path.split("/").some(invalidSegment),
-  ].some(Boolean);
-  if (invalid) throw new Error("Unsafe storage path.");
+  if (!safeStoragePath(path)) throw new Error("Unsafe storage path.");
 }
 export async function ensureFolder(adapter: DataAdapter, path: string): Promise<void> {
   validateStoragePath(path);

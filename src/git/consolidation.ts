@@ -7,6 +7,7 @@ import { parseStoredData } from "../core/storage-format";
 import { createMigrationEngine } from "../maintenance/engine";
 import { reinitializeRepository } from "../maintenance/reinitialize";
 import type { ConsolidatedData, MigrationSnapshot } from "../maintenance/types";
+import { publicationState, sameConsolidation } from "./publication-decisions";
 import { type Connection, gitSession } from "./session";
 
 export interface ConsolidationPreview extends ConsolidatedData {
@@ -91,13 +92,12 @@ export function consolidation(connection: Connection) {
     revision: string,
   ): Effect.fn.Return<"complete" | "pending" | "stale", SyncError> {
     const current = yield* io("Cannot fetch repository state.", session.fetch);
-    if (current.revision === revision) return "complete";
-    if (current.revision === expected) return "pending";
-    if (!current.revision) return "stale";
+    const state = publicationState(current.revision, expected, revision);
+    if (state !== "inspect" || !current.revision) return state === "inspect" ? "stale" : state;
     const hydrate = (hashes: readonly string[]) => session.hydrate(current.repo, hashes);
     const before = yield* readConsolidationHash(current.repo, revision, hydrate);
     const after = yield* readConsolidationHash(current.repo, current.revision, hydrate);
-    return before && before === after ? "complete" : "stale";
+    return sameConsolidation(before, after) ? "complete" : "stale";
   });
   const apply = Effect.fn("maintenance.apply")(function* (
     expected: string,

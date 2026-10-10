@@ -6,13 +6,8 @@ import {
   scopedCredentials,
   storeCredentials,
 } from "./auth/credentials";
-import {
-  type Config,
-  connectionChanged,
-  defaults,
-  loadConfig,
-  type SyncPreferences,
-} from "./core/config";
+import { type Config, defaults, loadConfig, type SyncPreferences } from "./core/config";
+import { connectionChanged } from "./core/decisions";
 import type { SyncEngine } from "./core/engine";
 import { attempt, explain, io, retryable, SyncError } from "./core/errors";
 import { hashText } from "./core/hash";
@@ -34,6 +29,12 @@ import { commitAuthor, deviceName } from "./platform/device";
 import { gitCache } from "./platform/git-cache";
 import { obsidianFetch } from "./platform/http";
 import { createRetryLoop, type Outcome } from "./platform/retry";
+import {
+  automaticSyncReady,
+  backgroundReady,
+  captureReady,
+  syncOutcome,
+} from "./platform/sync-decisions";
 import { ObsidianVault } from "./platform/vault";
 import { HistoryView, historyType } from "./ui/history-view";
 import { GitbinSettings } from "./ui/settings";
@@ -272,18 +273,19 @@ export default class GitbinPlugin extends Plugin {
     return this.syncOutcome(success);
   }
   private automaticSyncReady(): boolean {
-    return this.config.autoSync && this.uploadTimer === undefined;
+    return automaticSyncReady(this.config.autoSync, this.uploadTimer !== undefined);
   }
   private backgroundReady(): boolean {
-    return this.config.setupComplete && this.layoutReady;
+    return backgroundReady(this.config.setupComplete, this.layoutReady);
   }
   private syncOutcome(success: boolean): Outcome {
-    if (this.lastFailure) return this.failureOutcome();
-    return success ? "success" : "stop";
+    return syncOutcome(
+      success,
+      Boolean(this.lastFailure),
+      Boolean(this.lastFailure) && retryable(this.lastFailure),
+    );
   }
-  private failureOutcome(): Outcome {
-    return retryable(this.lastFailure) ? "retry" : "stop";
-  }
+
   private inspectStatus = Effect.fn("plugin.inspectStatus")(function* (this: GitbinPlugin) {
     const remote = yield* this.remote(this.config);
     const vaults = yield* remote.inspect(
@@ -634,7 +636,7 @@ export default class GitbinPlugin extends Plugin {
     yield* this.savePending(changed);
   });
   private captureReady(): boolean {
-    return this.layoutReady && this.attached && this.engine !== undefined;
+    return captureReady(this.layoutReady, this.attached, this.engine !== undefined);
   }
 
   private scheduleCapture(): void {

@@ -3,6 +3,7 @@ import { BinaryObjects, binaryObject, blobId } from "../core/blobs";
 import { binaryContent, contentFromBytes, type FileContent } from "../core/content";
 import { FileDocument } from "../core/file";
 import { Metadata, metadataPath } from "../core/metadata";
+import { hiddenPath, safeSnapshotPath } from "../core/path-rules";
 import { validateRemote } from "../core/projection";
 import { Journal } from "../core/protocol";
 import { discoverVaults } from "../git/vaults";
@@ -36,8 +37,7 @@ function validateVault(files: ReadonlyMap<string, Uint8Array>, root: string): vo
       blobs.set(id, binaryObject(id, bytes));
     } else if (path.startsWith(root + "/")) {
       const relative = path.slice(root.length + 1);
-      if (!relative.split("/").some((part) => part.startsWith(".")))
-        contents.set(relative, contentFromBytes(relative, bytes));
+      if (!hiddenPath(relative)) contents.set(relative, contentFromBytes(relative, bytes));
       const content = binaryContent(bytes);
       blobs.set(blobId(content), content);
     }
@@ -85,11 +85,7 @@ export function validateCurrent(snapshot: MigrationSnapshot): void {
     JSON.parse(new TextDecoder().decode(snapshot.files.get(metadataPath))),
   );
   for (const path of snapshot.files.keys()) {
-    if (
-      path.split("/").some((part) => !part || part === "." || part === ".." || part === ".git") ||
-      path.includes("\\")
-    )
-      throw new Error("Unsafe snapshot path.");
+    if (!safeSnapshotPath(path)) throw new Error("Unsafe snapshot path.");
   }
   discoverVaults(new Map([...snapshot.files.keys()].map((path) => [path, ""])));
   for (const root of repositoryVaults(snapshot.files)) validateVault(snapshot.files, root);

@@ -10,6 +10,7 @@ import {
 } from "../core/content";
 import { io } from "../core/errors";
 import type { HistoryState } from "../core/history";
+import { hiddenPath } from "../core/path-rules";
 import type { LocalVault } from "../core/ports";
 import type { Journal } from "../core/protocol";
 import { validPath } from "../core/protocol";
@@ -33,7 +34,7 @@ export class ObsidianVault implements LocalVault {
     io("Cannot read saved files from this vault.", async () => {
       const files = new Map<string, FileContent>();
       for (const file of this.app.vault.getFiles()) {
-        if (file.path.split("/").some((segment) => segment.startsWith("."))) continue;
+        if (hiddenPath(file.path)) continue;
         this.safe(file.path);
         files.set(file.path, await this.fileContent(file));
       }

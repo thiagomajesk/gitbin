@@ -1,5 +1,7 @@
 import { Schema } from "effect";
+import { migrationSequence } from "./decisions";
 import { SyncError } from "./errors";
+import { metadataValue } from "./metadata-values";
 
 export const migrationIds = Object.freeze([
   "binary-content-references",
@@ -13,15 +15,16 @@ export const Metadata = Schema.Struct({
 });
 export type Metadata = typeof Metadata.Type;
 export function currentMetadata(consolidationHash: string | null = null): Metadata {
-  return { consolidationHash, appliedMigrations: [...migrationIds] };
+  return metadataValue(consolidationHash, migrationIds);
 }
 export function migrationPrefix(applied: readonly string[], expected: readonly string[]): void {
-  if (applied.some((id) => !expected.includes(id)))
+  const sequence = migrationSequence(applied, expected);
+  if (sequence === "newer")
     throw new SyncError({
       code: "newer-format",
       message: "This vault requires a newer Gitbin version.",
     });
-  if (applied.some((id, index) => id !== expected[index]))
+  if (sequence === "invalid")
     throw new SyncError({
       code: "invalid-data",
       message: "The applied migration sequence is inconsistent.",

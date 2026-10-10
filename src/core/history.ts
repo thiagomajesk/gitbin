@@ -1,7 +1,9 @@
 import { Schema } from "effect";
 import { BinaryObjects } from "./blobs";
 import { contentHash } from "./content";
+import { describeChange } from "./decisions";
 import { FileDocument } from "./file";
+import { historyLocationOrder } from "./order-decisions";
 
 const FileSnapshot = Schema.Struct({
   id: Schema.String,
@@ -32,11 +34,11 @@ export const HistoryState = Schema.Struct({
   entries: Schema.Array(HistoryEntry),
 });
 export type HistoryState = typeof HistoryState.Type;
-export const emptyHistory = (): HistoryState => ({ checkpoint: null, entries: [] });
+export { emptyHistory } from "./history-values";
 
 export function snapshotFiles(states: Iterable<FileDocument>): ReadonlyArray<FileSnapshot> {
   return Array.from(states, (file) => {
-    const locations = [...file.locations()].sort(([a], [b]) => (a < b ? 1 : -1));
+    const locations = [...file.locations()].sort(([a], [b]) => historyLocationOrder(a, b));
     const path = locations.find(([, location]) => location.path !== null)?.[1].path ?? null;
     const content = file.content;
     return {
@@ -64,36 +66,6 @@ export function snapshotUpdates(
   } finally {
     for (const file of states) file.destroy();
   }
-}
-
-function same(left: FileSnapshot | null, right: FileSnapshot | null): boolean {
-  if (!left || !right) return !left && !right;
-  return left.path === right.path && left.hash === right.hash;
-}
-
-function changeKind(
-  baseline: FileSnapshot | null,
-  local: FileSnapshot | null,
-  incoming: FileSnapshot | null,
-  known: boolean,
-): FileChange["kind"] {
-  if (!known) return "synced";
-  const localChanged = !same(baseline, local);
-  const incomingChanged = !same(baseline, incoming);
-  if (localChanged && incomingChanged && !same(local, incoming)) return "combined";
-  return incomingChanged ? "incoming" : "local";
-}
-
-function describeChange(
-  baseline: FileSnapshot | null,
-  local: FileSnapshot | null,
-  incoming: FileSnapshot | null,
-  result: FileSnapshot,
-  known: boolean,
-): FileChange | null {
-  if (known && same(baseline, result) && same(local, incoming)) return null;
-  if (!known && result.path === null) return null;
-  return { kind: changeKind(baseline, local, incoming, known), baseline, local, incoming, result };
 }
 
 export function recordHistory(

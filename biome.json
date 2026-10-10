@@ -10,7 +10,8 @@
       "*.ts",
       "!!**/node_modules",
       "!!**/dist",
-      "!!**/.fallow"
+      "!!**/.fallow",
+      "!!**/.tools"
     ]
   },
   "formatter": {

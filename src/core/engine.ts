@@ -13,6 +13,7 @@ import {
   snapshotUpdates,
 } from "./history";
 import { currentMetadata } from "./metadata";
+import { renamedPath } from "./path-rules";
 import type { GitRemote, LocalVault, RemoteSnapshot, SyncResult } from "./ports";
 import {
   attachFile,
@@ -155,10 +156,8 @@ export function createSyncEngine(
         message: "Finish the interrupted sync before renaming tracked states.",
       });
     for (const file of states.values()) {
-      const baseline = file.baselinePath;
-      if (baseline === null || (baseline !== oldPath && !baseline.startsWith(`${oldPath}/`)))
-        continue;
-      const target = baseline === oldPath ? path : path + baseline.slice(oldPath.length);
+      const target = renamedPath(file.baselinePath, oldPath, path);
+      if (target === null) continue;
       const text = yield* local.read(target);
       if (text === null) continue;
       yield* attempt("Cannot record this rename.", () => {

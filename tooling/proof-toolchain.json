@@ -1,0 +1,27 @@
+{
+  "lemma": {
+    "revision": "b7870ece0f84bb1411bf3b5561af5ab928e88043",
+    "sha256": "89e022315c57dcc643fc26d5026b5156592c97cd3d78627144726170548153d9"
+  },
+  "dafny": {
+    "version": "4.11.0",
+    "assets": {
+      "win32-x64": {
+        "file": "dafny-4.11.0-x64-windows-2022.zip",
+        "sha256": "3653f05a111ca21e234709ea7b25ce96083fd6c6f10484256ba54110dbc0654d"
+      },
+      "linux-x64": {
+        "file": "dafny-4.11.0-x64-ubuntu-22.04.zip",
+        "sha256": "a46a9ff7cdd720f7955854c78e95df13f4cfe6b80691b05f8654fe19e8267179"
+      },
+      "darwin-arm64": {
+        "file": "dafny-4.11.0-arm64-macos-13.zip",
+        "sha256": "c90c75e7d5db9c6ccbb7127840dfe43f0ac938b039a7ebed146d8ead383a572f"
+      },
+      "darwin-x64": {
+        "file": "dafny-4.11.0-x64-macos-13.zip",
+        "sha256": "5fc0de946c5b2fad33f16bd22a5b06f4fd0dfa7f6d770284237e3f1f3ca9f73d"
+      }
+    }
+  }
+}

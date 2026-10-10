@@ -14,9 +14,14 @@
     "lint:obsidian": "eslint src tests --max-warnings 0",
     "analyze": "fallow dead-code --ci --format human",
     "analyze:health": "fallow health --format human",
-    "quality": "pnpm format && pnpm lint && pnpm lint:obsidian && pnpm check && pnpm analyze && pnpm analyze:health && pnpm analyze:duplicates && pnpm test && pnpm build",
+    "quality": "pnpm format && pnpm lint && pnpm lint:obsidian && pnpm check && pnpm analyze && pnpm analyze:health && pnpm analyze:duplicates && pnpm proof && pnpm proof:mutations && pnpm test && pnpm build",
     "dev": "vite build --watch --mode development",
-    "analyze:duplicates": "fallow dupes --format human"
+    "analyze:duplicates": "fallow dupes --format human",
+    "proof:setup": "node tooling/setup-proofs.mjs",
+    "proof": "node tooling/verify-proofs.mjs",
+    "proof:mutations": "node tooling/proof-mutations.mjs",
+    "proof:regen": "node tooling/regen-proofs.mjs",
+    "proof:coverage": "node tooling/proof-coverage.mjs"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",

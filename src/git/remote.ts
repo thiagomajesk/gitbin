@@ -4,21 +4,13 @@ import type { GitRemote, Publication, RemoteSnapshot } from "../core/ports";
 import { checkRoot, type Registration } from "../core/protocol";
 import { consolidation } from "./consolidation";
 import { candidate, readEntries, readFiles } from "./objects";
+import { allowedRemote } from "./remote-policy";
 import { type Connection, gitSession } from "./session";
 import { inspectVaults } from "./status";
 import { discoverVaults } from "./vaults";
 export function checkRemote(remote: string): void {
   const url = new URL(remote);
-  const local =
-    url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-  if (
-    (url.protocol !== "https:" && !local) ||
-    url.username ||
-    url.password ||
-    url.hash ||
-    url.search ||
-    /\s/.test(remote)
-  )
+  if (!allowedRemote(url, /\s/.test(remote)))
     throw new Error(
       "Use the repository's HTTPS URL without a token. SSH and local paths are not supported.",
     );

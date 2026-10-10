@@ -1,0 +1,436 @@
+{
+  "src/auth/connect.ts": {
+    "digest": "5be927d69b6bdabb7c51e38bbffbafcba237082e029a6275f56bc13e83ecddf2",
+    "verified": [],
+    "boundary": "Obsidian store reads, schema/path validation and asynchronous connection effects; no independent pure return calculation remains."
+  },
+  "src/auth/credential-decisions.ts": {
+    "digest": "fe25dabe7bcd49c64beb5ffc3338c2d13b8a2adf1c03ca5bb2c1c59dc1cb0daa",
+    "verified": ["credentialScope", "matchingSavedCredentials"]
+  },
+  "src/auth/credentials.ts": {
+    "digest": "40827da310fdefab3a96b7a69bb5534b5762ee491e2c6da8b967c0155e7bb881",
+    "verified": [],
+    "boundary": "URL parsing, credential callback and JSON/schema serialization. Origin/path authorization delegates to the verified credentialScope predicate."
+  },
+  "src/auth/setup-code.ts": {
+    "digest": "dfd7d1e8dcd8ed5d603c19c5770341154a7ceb80d5d44b644bcb185a3e06d482",
+    "verified": [],
+    "boundary": "WebCrypto, random typed arrays, base64, regex and timed encryption/decryption. IEEE-754 expiration arithmetic and cryptographic algorithms are not modeled by this prover."
+  },
+  "src/auth/setup-transfer.ts": {
+    "digest": "348999838d33bd2c0c44d80bab8d497bd61c5018862eee6aec22b9ce9b3601cc",
+    "verified": [],
+    "boundary": "Schema/URL validation, thrown errors, current UI store reads and async connection; JSON payload decoding is outside the verified subset."
+  },
+  "src/core/blobs.ts": {
+    "digest": "9a96d940fabc8850579cc0d9e85ea0427381a5fadaedaa002966eab99aac24dd",
+    "verified": [],
+    "boundary": "Mutable BinaryObjects instances, SHA-1, byte encoding and schema validation. Class heap mutation and cryptographic correctness are not modeled."
+  },
+  "src/core/checkpoint.ts": {
+    "digest": "02d9391a1333fa5d3ca971b67ac10c6ebca76f009e4fdf0341377c04a1e880e4",
+    "verified": [],
+    "boundary": "Effect Schema declaration; no implementation function body."
+  },
+  "src/core/config.ts": {
+    "digest": "31b336ebba7f4a91c0565c31a017e3adc596dfa4d0a387584b0f207f47ca82c4",
+    "verified": [],
+    "boundary": "Effect Schema decoding and time-dependent defaults (Date.now). Validation and clock semantics are external."
+  },
+  "src/core/content-values.ts": {
+    "digest": "be283b6286336b41b9b5e4ce1c0ee22ac7b39c8b105fb5155dd3b4838bbff178",
+    "verified": ["textContent", "equalContent"]
+  },
+  "src/core/content.ts": {
+    "digest": "84b42e4543f33ed46409926cd1159f7ca76e1b578244b1d2120b64dfcfc68ea8",
+    "verified": [],
+    "boundary": "Typed-array/base64/UTF-8 codecs, SHA-256 and regex extension parsing. Content equality delegates to verified equalContent; text construction is re-exported from a verified module."
+  },
+  "src/core/decisions.ts": {
+    "digest": "4cd591a35e5f8cb3ee8e78856b5131208de6c710c925a292c20b10d675a5d952",
+    "verified": [
+      "connectionChanged",
+      "same",
+      "changeKind",
+      "describeChange",
+      "migrationSequence",
+      "ownerAt"
+    ]
+  },
+  "src/core/engine.ts": {
+    "digest": "83cdffc9eb1a4e0511c28e3e4a555286a2e2a7f1fe7c71980e2167edaedcea5b",
+    "verified": [],
+    "boundary": "Effect orchestration with mutable CRDT maps, durable writes and external state. Rename selection delegates to renamedPath; persistence/concurrency remain integration-tested."
+  },
+  "src/core/errors.ts": {
+    "digest": "bc0f9f46647e48de0aae30967856fd192dc3f683d7d773df4ef4fbf14679c5b5",
+    "verified": [],
+    "boundary": "Effect exception adapters and runtime instanceof/cause traversal on JavaScript Error instances, including possible cyclic object graphs."
+  },
+  "src/core/file.ts": {
+    "digest": "2b10b18b9dc1b058c04cf53b3f2a7c4719598d08d2352b6b1c072632424596ad",
+    "verified": [],
+    "boundary": "Yjs document heap mutation, diff library, schema decoding and UUIDs. Comparator delegates to descendingId; no assumed Yjs model is used."
+  },
+  "src/core/hash.ts": {
+    "digest": "a212657361426dff132eecca6ab08abf879716ae8ad68f12e7d2fc7e31bb50c0",
+    "verified": [],
+    "boundary": "Noble SHA-256 and UTF-8 encoding; external cryptographic implementation."
+  },
+  "src/core/history-values.ts": {
+    "digest": "5f558b7a2c24ddebc0c600f9fe01970d7329f63e7480a33ddd4034cf1223aa2a",
+    "verified": ["emptyHistory"]
+  },
+  "src/core/history.ts": {
+    "digest": "53309e620f229762c0a6d5b0a05856026182c549cf764add8e675822efa0f786",
+    "verified": [],
+    "boundary": "Yjs snapshots, object identity, random IDs, timestamps, Map aggregation, JSON byte-budget trimming and sort. Empty state and change classification delegate to verified functions. Sort is axiomatic in the pinned translator."
+  },
+  "src/core/metadata-values.ts": {
+    "digest": "14628f02217be74d1194626092ea92ddd03b2da25d11114a469cbbb5d18a0c1f",
+    "verified": ["metadataValue"]
+  },
+  "src/core/metadata.ts": {
+    "digest": "85461ccb3ef7b04d32ed28c47aec558290e17426bfbd2e83249b1b7a7a57abe0",
+    "verified": [],
+    "boundary": "Schema validation and SyncError throwing around verified migrationSequence and metadataValue. Migration registry is configuration data, not an independently executed function."
+  },
+  "src/core/order-decisions.ts": {
+    "digest": "cb24c625f3bc2284fd80d39e1607d0bd08cb84d5b5eecf43e7845ebf80a439ba",
+    "verified": ["descendingId", "historyLocationOrder"]
+  },
+  "src/core/path-rules.ts": {
+    "digest": "8f4373789f9ca4e7154c582cc221077b46d9329e5555816885f225d7e521db34",
+    "verified": [
+      "invalidSegment",
+      "traversalPath",
+      "safeStoragePath",
+      "hiddenPath",
+      "metadataEntry",
+      "overlaps",
+      "stateLocation",
+      "safeSnapshotPath",
+      "renamedPath"
+    ]
+  },
+  "src/core/ports.ts": {
+    "digest": "18627aa349c29c7efdfe8c64696cb44e5003c1d4ccdd75ae7f0eaa6bd047c8c1",
+    "verified": [],
+    "boundary": "Interfaces/types only; no runtime function body."
+  },
+  "src/core/projection.ts": {
+    "digest": "4d7d1ce61bc73904f0836ba6f36f586eb055ccc72fedd57fd450471d9d49f6e4",
+    "verified": [],
+    "boundary": "Mutable FileDocument projection, regex conflict suffix insertion, sorting and write scheduling over maps. Owner overlap and write disposition delegate to verified predicates; object lifecycle is outside the model."
+  },
+  "src/core/protocol.ts": {
+    "digest": "6061904897a209fa18e1070afc3c586eb479eee96d667f59ccd5acb7928ef6ba",
+    "verified": [],
+    "boundary": "Effect Schema decoding, RegExp path validation and throwing validation adapters. Full RegExp and Unicode case-folding semantics are not modeled."
+  },
+  "src/core/reconcile-decisions.ts": {
+    "digest": "803afd25ab922cf774953e5ba787b00807175bb6cf58871b0f4537f42afca6d6",
+    "verified": ["conflict", "unchangedCheckpoint", "rebasedEdit", "writeDisposition"]
+  },
+  "src/core/reconcile.ts": {
+    "digest": "4f52204534ccd104f05df6b91c54ec460fc0dc17356bfcebaa7b8d8a637f929f",
+    "verified": [],
+    "boundary": "Yjs mutations, hash computation and identity/Map-based replay. Conflict, checkpoint and rebased-edit predicates delegate to verified functions."
+  },
+  "src/core/services.ts": {
+    "digest": "2947675ed48e56fe44fdb59f56c848775684b050ad703e258fd0dda302a3d8a5",
+    "verified": [],
+    "boundary": "Effect Context/Layer composition; external service runtime."
+  },
+  "src/core/storage-format.ts": {
+    "digest": "649c83076bd8d775b7ea0c2de08fa321ef568868227b71390fb68bd1e4338ec9",
+    "verified": [],
+    "boundary": "JSON parsing, schema decoding and Effect/SyncError failure behavior; parser semantics are external."
+  },
+  "src/core/storage-layout.ts": {
+    "digest": "b3ce58797ec7d56c28defe7d11bfbf0bf187bdc7216ec4efbd7aeeabe0a74d3b",
+    "verified": [],
+    "boundary": "Yjs decoding and destruction; resulting layout selection delegates to verified stateLocation."
+  },
+  "src/git/consolidation.ts": {
+    "digest": "cf7ab34acfca9f15aed2e4174763b38cbea59328e62f64dcefe4eb4b02e84f12",
+    "verified": [],
+    "boundary": "Git I/O, Effect control flow, commit construction and force-push recovery. Publication-state and consolidation-hash decisions delegate to verified functions; no proof of server concurrency."
+  },
+  "src/git/objects.ts": {
+    "digest": "0605f6f3dca5172fe5bbd3f29e1de5e6c03b5dadc690fbf1d451f856e1767c8f",
+    "verified": [],
+    "boundary": "Git tree/blob I/O, RegExp entry parsing, binary codecs, hash validation and mutable maps. Storage-path checks delegate to verified predicates."
+  },
+  "src/git/publication-decisions.ts": {
+    "digest": "482dbb0f09c7b7e6ccc3b74e7b8d01750204fe9ac859b5d3d1694e3658b49b33",
+    "verified": ["publicationState", "sameConsolidation"]
+  },
+  "src/git/push-lease.ts": {
+    "digest": "caf066ef606ec37090c15372c8333134ecfff1f92e6dc52055eae10791e819f4",
+    "verified": [],
+    "boundary": "Asynchronous Response decoding and RegExp Git advertisement parsing; remote protocol/transport is external."
+  },
+  "src/git/remote-policy.ts": {
+    "digest": "cbc06217affa84ca89cad7298970430f0642e5f7ee4b4df223a53d436984e706",
+    "verified": ["localHttp", "allowedRemote"]
+  },
+  "src/git/remote.ts": {
+    "digest": "f6a80d5cd75502d1c0408934a37230aa3f29a32ecc2c2c455da7184b134b5eab",
+    "verified": [],
+    "boundary": "URL parsing, whitespace RegExp, Git/Effect operations. URL policy delegates to verified allowedRemote after parsing."
+  },
+  "src/git/session.ts": {
+    "digest": "1bd6a14d1aea165a7e5d51cd903001f792fb9b4e9902419c4b3b9d609958a620",
+    "verified": [],
+    "boundary": "just-git command execution, Request/Response I/O, cache/ref mutation and network error handling; transport semantics are external."
+  },
+  "src/git/status.ts": {
+    "digest": "8ed5dd71038e053803099544198bd8148b734b39eaf1f13a988a3ea89588b264",
+    "verified": [],
+    "boundary": "Git tree I/O and JSON serialization; status projection includes library and mutable repository state."
+  },
+  "src/git/vaults.ts": {
+    "digest": "b08cd3b568f1e741b56c2b852b7936f13bf45e0b58f1b450de483e916f33749b",
+    "verified": [],
+    "boundary": "RegExp storage-layout parser, Set aggregation, sorting and throwing validation; regex and sorting implementation are not proved."
+  },
+  "src/main.ts": {
+    "digest": "15dd296ef4caa6079d5d82b8be9d95359c6872c09ccfcca24930b9adfdd9858b",
+    "verified": [],
+    "boundary": "Obsidian plugin lifecycle, mutable instance state and Effect/Promise execution. Readiness and outcome decisions are delegated to verified sync-decisions; callbacks remain framework adapters."
+  },
+  "src/maintenance/binary-references.ts": {
+    "digest": "94480f0d76a8e707ef620a593e2b2443c184cb016cbc5e409ae1cb4cef9c81ea",
+    "verified": [],
+    "boundary": "Yjs updates, schema/JSON decoding, binary codecs and mutable blob stores; migration adapters require external library semantics."
+  },
+  "src/maintenance/compact.ts": {
+    "digest": "25a821839027851633bc15b7c2b872b02d75efcb680f6e9e5b22624a03ed5461",
+    "verified": [],
+    "boundary": "Yjs recreation, byte/hash conversion and mutable file maps; compaction integrity remains covered by integration tests."
+  },
+  "src/maintenance/engine.ts": {
+    "digest": "78c7f3eebf1376337d6a3f558d12eed88358f16f1b9268ca8085168c7f318c99",
+    "verified": [],
+    "boundary": "Effect migration execution, plugin-supplied callbacks, object-identity registry check, RegExp IDs, typed-array cloning and random hash generation. Sequence ordering is verified separately."
+  },
+  "src/maintenance/legacy-validation.ts": {
+    "digest": "115bbbeb404a25641729c2fd2d2a4827845de6ca9693d33c4ca9a953963c35aa",
+    "verified": [],
+    "boundary": "Legacy RegExp/schema/JSON/Yjs parsing and binary hash validation. Snapshot and hidden-path checks delegate to verified predicates."
+  },
+  "src/maintenance/metadata.ts": {
+    "digest": "47d03ba7c22b78b26f96440a95578c559856545149c433036a0b6d15b3153803",
+    "verified": [],
+    "boundary": "JSON/schema/UTF-8 decoding, legacy Uint8Array conversion, thrown errors and serialization; no trusted decoder axioms."
+  },
+  "src/maintenance/reinitialize.ts": {
+    "digest": "c419ee4f0218773339cd58e8f64b57416fcfe9c074ac4134f2ab17adb75009ab",
+    "verified": [],
+    "boundary": "RegExp vault discovery, Yjs documents, byte codecs and random IDs. Metadata exclusion and hidden-path rules delegate to verified predicates."
+  },
+  "src/maintenance/types.ts": {
+    "digest": "6dae409303bb11c6c4b0737b9e61be51e7058d3305f3f0af15cb27e3b986531c",
+    "verified": [],
+    "boundary": "Interfaces/types only; no runtime implementation."
+  },
+  "src/maintenance/unified-metadata.ts": {
+    "digest": "2d67b9d93c52801b6250bea17e591181f4c71c8ca031c3e46e4826125afb39e9",
+    "verified": [],
+    "boundary": "Effect migration adapter calling JSON/schema readers and validators; unsupported dynamic unknown objects and external decoding."
+  },
+  "src/maintenance/validation.ts": {
+    "digest": "63680e93ebb10487f6c1db8c3179ec941fce5f12a676243c138d3e5525ec2651",
+    "verified": [],
+    "boundary": "RegExp/schema/JSON/Yjs parsing and binary hash validation. Snapshot and hidden-path checks delegate to verified predicates."
+  },
+  "src/maintenance/vault-storage.ts": {
+    "digest": "52cb912bb22f701faee9f1948354c742a7406a5c544fe531f69762b2d5e20081",
+    "verified": [],
+    "boundary": "RegExp relocation, JSON/schema recovery, bytes and mutable file maps; no model of parsing failures."
+  },
+  "src/platform/consolidation.ts": {
+    "digest": "70e39945ae5750a4a34d8ed6202f5a82e24a9c41b5845db1c59770ae9e2c78a7",
+    "verified": [],
+    "boundary": "Obsidian filesystem I/O, JSON/schema and durable checkpoint replacement. Journal-install safety delegates to verified installableJournal."
+  },
+  "src/platform/device.ts": {
+    "digest": "094abac30a2a7021dcdb6985907e61c7b955a41426d55e87acc0eab032f20f83",
+    "verified": [],
+    "boundary": "OS/platform access, secret storage, UUIDs, Unicode trim and RegExp author sanitization; external environment and regex semantics."
+  },
+  "src/platform/git-cache.ts": {
+    "digest": "988a6ab27abf69cf522d16fdac376c718e4aced4382e9edbf18520a86604211f",
+    "verified": [],
+    "boundary": "Obsidian filesystem adapter, mutable LRU cache, typed arrays, RegExp object paths and Date objects; cache heap and I/O behavior are not modeled."
+  },
+  "src/platform/http.ts": {
+    "digest": "c0bcae9f295fc89c3042632d00d10892325393bad3744f88e1e9b635a6c53433",
+    "verified": [],
+    "boundary": "Request/Response conversion, Obsidian network requests and Promise/timer race; genuine asynchronous operations."
+  },
+  "src/platform/retry.ts": {
+    "digest": "aa317fd6081cfa82de8bf3aa6d97bfa77cebe538d665fa2aca34ce70c5846e54",
+    "verified": [],
+    "boundary": "Effect fibers, mutable scheduler state and clocks. retryDelay uses exponentiation and IEEE-754 jitter arithmetic; proving an integer/real approximation would not prove the JavaScript function."
+  },
+  "src/platform/storage.ts": {
+    "digest": "b5b0630fc1f516794469e6522f82f6e04bb92af7de2a55f8b75d03d08b1d6cb9",
+    "verified": [],
+    "boundary": "Throwing adapter around verified safeStoragePath plus asynchronous directory creation; external filesystem semantics."
+  },
+  "src/platform/sync-decisions.ts": {
+    "digest": "3172fd26dbbd27aaafe266b5fee8de5b6a6d889e2d33105c756c9b2cace64b62",
+    "verified": [
+      "automaticSyncReady",
+      "backgroundReady",
+      "captureReady",
+      "syncOutcome",
+      "installableJournal"
+    ]
+  },
+  "src/platform/vault.ts": {
+    "digest": "320c9978b32f58aba708d6a6dbe955ebc60ef258341822e25734726cdfbde24a",
+    "verified": [],
+    "boundary": "Obsidian mutable files and I/O, atomic-process callbacks, schema and binary codecs. Content and hidden-path decisions delegate to verified functions."
+  },
+  "src/ui/actions.ts": {
+    "digest": "64533fe594a278b748980bc8e9c52fea2977a0148cbb2ef06ac591e373a08c20",
+    "verified": [],
+    "boundary": "Callbacks adapt Obsidian plugin methods to UI Promise interfaces; external plugin state and effects."
+  },
+  "src/ui/components.tsx": {
+    "digest": "a2b9d7ed68cc1647383b740fba1d6a2ab668e7be9af5b62ca6ab8b1355be8342",
+    "verified": [],
+    "boundary": "React/Radix JSX, DOM events and Unicode field naming; rendering and event delivery are external."
+  },
+  "src/ui/consolidation-modal.tsx": {
+    "digest": "68e5b6f02f02c41952dc290da10bff85674d27dceb60d74e54924c713713a629",
+    "verified": [],
+    "boundary": "Obsidian Modal lifecycle, React rendering, mutable instance state and asynchronous maintenance callbacks."
+  },
+  "src/ui/consolidation-panel.tsx": {
+    "digest": "443e7f0d959fb1d1d394b1a9df1461df7b8591755c0313c90febe1fba5712a02",
+    "verified": [],
+    "boundary": "React hooks, JSX and asynchronous submit callbacks. Checklist acceptance delegates to a verified function; approved copy remains render data."
+  },
+  "src/ui/controls.tsx": {
+    "digest": "59b4c3d3a2aff93693957cb7a1a3c20b319957d634279c55b42a5741d558c441",
+    "verified": [],
+    "boundary": "Re-exported Radix primitives; no local implementation."
+  },
+  "src/ui/diff-highlighter.ts": {
+    "digest": "3ee162bdd97fe1f61d74a26b8da79d0bb84c8ade0d1ad896d526af44adbcbd66",
+    "verified": [],
+    "boundary": "Shiki runtime, regex engine and dynamic grammar import; external renderer."
+  },
+  "src/ui/file-history-modal.tsx": {
+    "digest": "29c50e3f5640127ea3bec41f6a28639eb47abc67c8589fcc827e301b64f2d03f",
+    "verified": [],
+    "boundary": "Obsidian Modal/React lifecycle and mutable render roots; framework adapter."
+  },
+  "src/ui/file-history.tsx": {
+    "digest": "76cd41c70346984d9023e10a0607d18e7029151902b07faea67ba17561c72cf0",
+    "verified": [],
+    "boundary": "React JSX/hooks, DOM measurement/scrolling and external diff parsing/counts. History summary, preview values and matching delegate to verified functions; no model of diff library or DOM layout."
+  },
+  "src/ui/history-decisions.ts": {
+    "digest": "b5035f35b99c2af355fbe727f58cbb98d226c05deb0944f4a65907088f867d74",
+    "verified": [
+      "diffFile",
+      "fileName",
+      "visibleHash",
+      "baselineName",
+      "isBinary",
+      "hasBinary",
+      "movedPath",
+      "contentsUnchanged",
+      "hasText",
+      "comparisonSummary",
+      "previewMatches"
+    ]
+  },
+  "src/ui/history-panel.tsx": {
+    "digest": "82359f64feff5c83036590131438bb60cecb2f65cadc8654f9f0bfcd24022ae7",
+    "verified": [],
+    "boundary": "React external-store hook and JSX rendering; external event/render semantics."
+  },
+  "src/ui/history-view.tsx": {
+    "digest": "75ac4ea2b74b1b2e0976f475b1750652e168b461e80a34c881492f34a0659ab2",
+    "verified": [],
+    "boundary": "Obsidian ItemView lifecycle and React rendering; constant framework metadata methods have no algorithm to extract."
+  },
+  "src/ui/icon-button.tsx": {
+    "digest": "0a46b6ba01a6019c9e2749d9e4364f6954dd515e485cdcff74183b7242762ef0",
+    "verified": [],
+    "boundary": "React JSX/hook/ref and Obsidian tooltip adapter; DOM effects."
+  },
+  "src/ui/issue-values.ts": {
+    "digest": "935df1c46de4d158dd5bc60871dfad5c278d7fa8c6dfe8045c484564b877ecc5",
+    "verified": ["issueValue"]
+  },
+  "src/ui/settings.ts": {
+    "digest": "d2136394d305984b3cf0f2b17ea690f84aeedde9ba60fbf437461e6115914f3a",
+    "verified": [],
+    "boundary": "Obsidian settings metadata and React root lifecycle callbacks; framework-controlled mutable DOM."
+  },
+  "src/ui/setup-form.tsx": {
+    "digest": "ce73029128b70ee84150ef4307761bb486557d2d0226e0e54f12552a066292e5",
+    "verified": [],
+    "boundary": "React hooks, JSX and event dispatch into setup/maintenance actions; external UI runtime."
+  },
+  "src/ui/setup-transfer-modal.ts": {
+    "digest": "a055ae74e37b03e46d0e6042b36d8cf63971c9e158b655d0d3d05bbc198e5c4c",
+    "verified": [],
+    "boundary": "Obsidian modal DOM, QR canvas rendering, timers and encryption/connection Promises; external UI/crypto APIs."
+  },
+  "src/ui/setup-types.ts": {
+    "digest": "eaa770021b31b64c296aa1b7b6ac6d46da4e96c961d3326887977748733f60d7",
+    "verified": [],
+    "boundary": "Interfaces/types only; no runtime implementation."
+  },
+  "src/ui/status-decisions.ts": {
+    "digest": "675bc3507ac724077adb9205e702d8d7b5e5718b3b0af98b399a59b237e222e6",
+    "verified": [
+      "syncBlocked",
+      "repositoryState",
+      "syncState",
+      "statusDescription",
+      "acknowledgementsAccepted",
+      "statusColor",
+      "manualStatus"
+    ]
+  },
+  "src/ui/store.ts": {
+    "digest": "1be42bd6f22b2347153a4839137a35360e4377a496aa226353259a992348f0d8",
+    "verified": [],
+    "boundary": "Mutable closure snapshot, Partial object patches and listener callbacks; JavaScript identity and notification side effects are outside the pure model."
+  },
+  "src/ui/sync-history.tsx": {
+    "digest": "aa376e74ebaccbd1c7f31954859f820a94d30fbe715bbd716a48164f82ac2c42",
+    "verified": [],
+    "boundary": "React JSX/hooks, RegExp search, Intl.Collator sorting and Date-based day grouping. File naming delegates to verified fileName; locale/timezone behavior remains external."
+  },
+  "src/ui/sync-issue.ts": {
+    "digest": "c1e133c16118591630b2876908698ac34554d83aace2b8cbff9b0a2ecd9785c9",
+    "verified": [],
+    "boundary": "JavaScript Error/SyncError instanceof and bounded cause traversal; user-facing copy is produced by verified issueValue."
+  },
+  "src/ui/sync-preferences.tsx": {
+    "digest": "f72b894fe8365977f1d1f846a41738f304ee503c85341531097754a9a7b4a39d",
+    "verified": [],
+    "boundary": "React JSX/hooks, DOM number parsing and asynchronous persistence callbacks; external UI runtime."
+  },
+  "src/ui/sync-status.tsx": {
+    "digest": "dd34e4194d13e3deee94fa248138f4855339fcfc78fd316c6a733ce8348764f2",
+    "verified": [],
+    "boundary": "React JSX/hooks, Intl.DateTimeFormat and snapshot field adapters. Status policy, descriptions, colors and blocking delegate to verified functions."
+  },
+  "src/ui/use-setup.ts": {
+    "digest": "96f5cf6e904188dc04b85dfd15c5ca24b38afc2b2e66be286de1868185fd7371",
+    "verified": [],
+    "boundary": "React external-store state, schema/URL checks and asynchronous connection callbacks. Saved-credential matching delegates to a verified function."
+  }
+}

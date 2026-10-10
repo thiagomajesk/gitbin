@@ -9,6 +9,7 @@ import {
   encodeBytes as encode,
   type FileContent,
 } from "./content";
+import { descendingId } from "./order-decisions";
 import { Location, type StoredFile, validPath } from "./protocol";
 
 export class FileDocument {
@@ -139,7 +140,7 @@ export class FileDocument {
 
   previousPath(): string | null {
     const locations = Array.from(this.doc.getMap<unknown>("locations").entries()).sort(
-      ([left], [right]) => (left < right ? 1 : left > right ? -1 : 0),
+      ([left], [right]) => descendingId(left, right),
     );
     for (const [, raw] of locations) {
       const location = Schema.decodeUnknownSync(Location)(raw);

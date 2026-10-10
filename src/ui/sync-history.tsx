@@ -3,11 +3,10 @@ import { Eye, FileText, SquareDot, SquareMinus, SquarePlus } from "lucide-react"
 import { memo, type ReactNode, useDeferredValue, useId, useMemo, useState } from "react";
 import type { FileChange, HistoryEntry } from "../core/history";
 import { Button, Link } from "./controls";
+import { fileName } from "./history-decisions";
 
 export type HistorySelection = { readonly entry: HistoryEntry; readonly change: FileChange | null };
-function fileName(change: FileChange): string {
-  return change.result.path ?? change.baseline?.path ?? "Deleted file";
-}
+
 const fileOrder = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 export function orderedChanges(changes: ReadonlyArray<FileChange>): FileChange[] {
   return [...changes].sort((a, b) => fileOrder.compare(fileName(a), fileName(b)));

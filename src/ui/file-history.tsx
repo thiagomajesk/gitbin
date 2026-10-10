@@ -1,7 +1,6 @@
 import {
   DEFAULT_VIRTUAL_FILE_METRICS,
   type DiffFileInput,
-  type FileContents,
   parseDiffFromFile,
   registerCustomCSSVariableTheme,
 } from "@pierre/diffs";
@@ -18,6 +17,7 @@ import {
 } from "react";
 import type { FileChange, FileSnapshot } from "../core/history";
 import { Button } from "./controls";
+import { comparisonSummary, diffFile, previewMatches } from "./history-decisions";
 import { type HistorySelection, orderedChanges } from "./sync-history";
 
 registerCustomCSSVariableTheme("gitbin-obsidian", {
@@ -38,10 +38,6 @@ registerCustomCSSVariableTheme("gitbin-obsidian", {
 });
 const diffMetrics = { ...DEFAULT_VIRTUAL_FILE_METRICS, diffHeaderHeight: 0 };
 const virtualizerConfig = { overscrollSize: 600, intersectionObserverMargin: 1200 };
-
-function diffFile(file: FileSnapshot | null): FileContents | null {
-  return file?.path && file.text !== null ? { name: file.path, contents: file.text } : null;
-}
 
 function alignPreview(root: HTMLDivElement): void {
   const viewport = root.querySelector<HTMLElement>(".gitbin-diff-preview");
@@ -176,18 +172,6 @@ function VersionDiff({
   );
 }
 
-function comparisonSummary(change: FileChange): string | null {
-  const snapshots = [change.baseline, change.local, change.incoming, change.result];
-  if (snapshots.some((file) => file?.binary)) return "Binary file. No preview available.";
-  const baselineHash = change.baseline?.path ? change.baseline.hash : null;
-  if (snapshots.every((file) => (file?.path ? file.hash : null) === baselineHash))
-    return change.baseline?.path !== change.result.path
-      ? "File moved, contents unchanged."
-      : "Contents unchanged.";
-  if (snapshots.some((file) => file?.text)) return null;
-  return change.result.path ? "Empty file added." : "Empty file removed.";
-}
-
 function changeCounts(change: FileChange) {
   const oldFile = diffFile(change.baseline);
   const newFile = diffFile(change.result);
@@ -248,9 +232,8 @@ function DiffFileHeader({
 
 function DiffBlock({ change, labelId }: { readonly change: FileChange; readonly labelId: string }) {
   const summary = comparisonSummary(change);
-  const identical = [change.local, change.incoming].every(
-    (file) => file?.path === change.result.path && file?.text === change.result.text,
-  );
+  const identical =
+    previewMatches(change.local, change.result) && previewMatches(change.incoming, change.result);
   return (
     <>
       <DiffFileHeader change={change} labelId={labelId} showCounts={summary === null} />

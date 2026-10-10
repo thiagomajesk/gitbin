@@ -1,0 +1,5 @@
+{
+  "string-semantics": "javascript-utf16",
+  "dafny-library": "local",
+  "proof-dir": "proofs"
+}

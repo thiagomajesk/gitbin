@@ -1,10 +1,11 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
+import type { FileContent } from "./content-values";
+import { equalContent as equalValues } from "./content-values";
 
-export interface FileContent {
-  readonly type: "text" | "binary";
-  readonly value: string;
-}
+export { type FileContent, textContent } from "./content-values";
+
+import { textContent } from "./content-values";
 
 export function encodeBytes(bytes: Uint8Array): string {
   let binary = "";
@@ -14,7 +15,6 @@ export function encodeBytes(bytes: Uint8Array): string {
 }
 export const decodeBytes = (value: string): Uint8Array =>
   Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
-export const textContent = (value: string): FileContent => ({ type: "text", value });
 export const binaryContent = (bytes: Uint8Array): FileContent => ({
   type: "binary",
   value: encodeBytes(bytes),
@@ -24,10 +24,7 @@ export const contentBytes = (content: FileContent): Uint8Array =>
 export const contentEqual = (
   left: FileContent | null | undefined,
   right: FileContent | null | undefined,
-): boolean =>
-  left == null || right == null
-    ? left == null && right == null
-    : left.type === right.type && left.value === right.value;
+): boolean => equalValues(left ?? null, right ?? null);
 export const contentHash = (content: FileContent): string =>
   bytesToHex(sha256(contentBytes(content)));
 

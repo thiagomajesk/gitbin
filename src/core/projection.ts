@@ -1,8 +1,12 @@
 import { BinaryObjects } from "./blobs";
 import { contentEqual, contentHash, type FileContent } from "./content";
+import { ownerAt } from "./decisions";
 import { FileDocument } from "./file";
+import { descendingId } from "./order-decisions";
+import { overlaps } from "./path-rules";
 import type { RemoteSnapshot } from "./ports";
 import { validPath, type WriteIntent } from "./protocol";
+import { writeDisposition } from "./reconcile-decisions";
 
 function remotePaths(snapshot: RemoteSnapshot): Map<string, FileContent> {
   const paths = new Map<string, FileContent>();
@@ -38,18 +42,8 @@ export function validateRemote(snapshot: RemoteSnapshot): void {
       throw new Error(`Tracked remote file is missing: ${path}. Its CRDT state was not updated.`);
 }
 
-function ownerAt(owners: Set<string>, path: string): string | undefined {
-  const key = path.toLowerCase();
-  return Array.from(owners).find(
-    (existing) =>
-      existing === key || existing.startsWith(`${key}/`) || key.startsWith(`${existing}/`),
-  );
-}
-
 function selectedPath(file: FileDocument): string | null {
-  const locations = [...file.locations()].sort(([left], [right]) =>
-    left < right ? 1 : left > right ? -1 : 0,
-  );
+  const locations = [...file.locations()].sort(([left], [right]) => descendingId(left, right));
   if (locations.length === 0) throw new Error("Missing file location.");
   const live = locations.find(([, location]) => location.path !== null);
   const path =
@@ -64,7 +58,7 @@ function selectedPath(file: FileDocument): string | null {
 function availablePath(path: string, file: FileDocument, owners: Set<string>): string {
   let candidate = path;
   let attempt = 0;
-  let owner = ownerAt(owners, candidate);
+  let owner = ownerAt([...owners], candidate.toLowerCase());
   while (owner !== undefined) {
     const segments = path.split("/");
     const index = candidate.toLowerCase().startsWith(`${owner}/`)
@@ -79,7 +73,7 @@ function availablePath(path: string, file: FileDocument, owners: Set<string>): s
         : segment + suffix;
     candidate = segments.join("/");
     if (!validPath(candidate)) throw new Error("Resolved file path is too long.");
-    owner = ownerAt(owners, candidate);
+    owner = ownerAt([...owners], candidate.toLowerCase());
   }
   return candidate;
 }
@@ -119,9 +113,14 @@ function plannedWrite(
   before: FileContent | null,
   owner: FileDocument | undefined,
 ): WriteIntent | null {
-  if (before !== null && !owner && !contentEqual(before, after))
+  const disposition = writeDisposition(
+    before !== null,
+    owner !== undefined,
+    contentEqual(before, after),
+  );
+  if (disposition === "blocked")
     throw new Error(`A new local file appeared at ${path}. It was preserved; sync again.`);
-  return contentEqual(before, after) ? null : { path, before, after };
+  return disposition === "unchanged" ? null : { path, before, after };
 }
 
 export function planWrites(
@@ -141,11 +140,7 @@ export function planWrites(
   const blocked = (write: WriteIntent) =>
     write.after !== null &&
     Array.from(local.keys()).some(
-      (path) =>
-        path !== write.path &&
-        (path.toLowerCase() === write.path.toLowerCase() ||
-          path.toLowerCase().startsWith(`${write.path.toLowerCase()}/`) ||
-          write.path.toLowerCase().startsWith(`${path.toLowerCase()}/`)),
+      (path) => path !== write.path && overlaps(path.toLowerCase(), write.path.toLowerCase()),
     );
   // Save relocated content before removing paths that block a new file or folder.
   return [
