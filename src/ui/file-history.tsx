@@ -1,23 +1,34 @@
 import {
   DEFAULT_VIRTUAL_FILE_METRICS,
-  type DiffFileInput,
+  type FileDiffMetadata,
   parseDiffFromFile,
   registerCustomCSSVariableTheme,
 } from "@pierre/diffs";
-import { MultiFileDiff, useVirtualizer, Virtualizer } from "@pierre/diffs/react";
-import { FileText, FoldVertical, GitMerge, HardDrive, Server, UnfoldVertical } from "lucide-react";
+import { FileDiff, useVirtualizer, Virtualizer } from "@pierre/diffs/react";
+import {
+  FileText,
+  FoldVertical,
+  GitMerge,
+  HardDrive,
+  RefreshCw,
+  Server,
+  UnfoldVertical,
+} from "lucide-react";
 import {
   type ReactNode,
   useCallback,
+  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { FileChange, FileSnapshot } from "../core/history";
 import { Button } from "./controls";
 import { comparisonSummary, diffFile, previewMatches } from "./history-decisions";
+import { IconButton } from "./icon-button";
 import { type HistorySelection, orderedChanges } from "./sync-history";
 
 registerCustomCSSVariableTheme("gitbin-obsidian", {
@@ -84,11 +95,11 @@ function usePreviewBoundary() {
 }
 
 function DiffPreview({
-  files,
+  diff,
   heading,
   title,
 }: {
-  readonly files: DiffFileInput;
+  readonly diff: FileDiffMetadata;
   readonly heading: ReactNode;
   readonly title: string;
 }) {
@@ -96,10 +107,9 @@ function DiffPreview({
   const { root, measure } = usePreviewBoundary();
   const [expanded, setExpanded] = useState(false);
   const large = useMemo(() => {
-    const diff = parseDiffFromFile(files.oldFile, files.newFile);
     return diff.hunks.reduce((total, hunk) => total + hunk.unifiedLineCount, 0) > 50;
-  }, [files.oldFile, files.newFile]);
-  const content = <DiffContent files={files} measure={measure} />;
+  }, [diff]);
+  const content = <DiffContent diff={diff} measure={measure} />;
   return (
     <>
       <div className="gitbin-diff-label">
@@ -138,20 +148,24 @@ function VersionDiff({
   baseline,
   file,
   title,
+  parsed,
 }: {
   readonly baseline: FileSnapshot | null;
   readonly file: FileSnapshot | null;
   readonly title: "Local" | "Remote" | "Final";
+  readonly parsed?: FileDiffMetadata | null | undefined;
 }) {
   const labelId = useId();
   const Icon = { Local: HardDrive, Remote: Server, Final: GitMerge }[title];
-  const oldFile = diffFile(baseline);
-  const newFile = diffFile(file);
-  const files: DiffFileInput | null = oldFile
-    ? { oldFile, newFile }
-    : newFile
-      ? { oldFile: null, newFile }
-      : null;
+  const diff = useMemo(
+    () =>
+      baseline?.text === file?.text
+        ? null
+        : parsed === undefined
+          ? parseComparison(baseline, file)
+          : parsed,
+    [baseline, file, parsed],
+  );
   const heading = (
     <h4 id={labelId}>
       <Icon size={16} aria-hidden="true" />
@@ -160,8 +174,8 @@ function VersionDiff({
   );
   return (
     <section className="gitbin-diff-panel" aria-labelledby={labelId}>
-      {files && oldFile?.contents !== newFile?.contents ? (
-        <DiffPreview files={files} heading={heading} title={title} />
+      {diff && baseline?.text !== file?.text ? (
+        <DiffPreview diff={diff} heading={heading} title={title} />
       ) : (
         <>
           {heading}
@@ -172,11 +186,17 @@ function VersionDiff({
   );
 }
 
-function changeCounts(change: FileChange) {
-  const oldFile = diffFile(change.baseline);
-  const newFile = diffFile(change.result);
+function parseComparison(
+  baseline: FileSnapshot | null,
+  file: FileSnapshot | null,
+): FileDiffMetadata | null {
+  const oldFile = diffFile(baseline);
+  const newFile = diffFile(file);
   if (!oldFile && !newFile) return null;
-  const diff = parseDiffFromFile(oldFile, newFile);
+  return parseDiffFromFile(oldFile, newFile);
+}
+function changeCounts(diff: FileDiffMetadata | null) {
+  if (!diff) return null;
   let added = 0;
   let removed = 0;
   for (const hunk of diff.hunks) {
@@ -190,9 +210,9 @@ function changeCounts(change: FileChange) {
   return { added, removed };
 }
 
-function DiffCounts({ change, show }: { readonly change: FileChange; readonly show: boolean }) {
+function DiffCounts({ diff }: { readonly diff: FileDiffMetadata | null }) {
   const countLabelId = useId();
-  const counts = useMemo(() => (show ? changeCounts(change) : null), [change, show]);
+  const counts = useMemo(() => changeCounts(diff), [diff]);
   if (!counts) return null;
   return (
     <span className="gitbin-diff-counts" role="img" aria-labelledby={countLabelId}>
@@ -212,11 +232,13 @@ function DiffCounts({ change, show }: { readonly change: FileChange; readonly sh
 function DiffFileHeader({
   change,
   labelId,
-  showCounts,
+  diff,
+  action,
 }: {
   readonly change: FileChange;
   readonly labelId: string;
-  readonly showCounts: boolean;
+  readonly diff: FileDiffMetadata | null;
+  readonly action?: ReactNode;
 }) {
   const name = change.result.path ?? change.baseline?.path ?? "Deleted file";
   const moved = change.baseline?.path && change.result.path && change.baseline.path !== name;
@@ -225,18 +247,23 @@ function DiffFileHeader({
     <header className="gitbin-diff-file-header">
       <FileText size={18} aria-hidden="true" />
       <h3 id={labelId}>{heading}</h3>
-      <DiffCounts change={change} show={showCounts} />
+      <DiffCounts diff={diff} />
+      {action}
     </header>
   );
 }
 
 function DiffBlock({ change, labelId }: { readonly change: FileChange; readonly labelId: string }) {
   const summary = comparisonSummary(change);
+  const finalDiff = useMemo(
+    () => (summary === null ? parseComparison(change.baseline, change.result) : null),
+    [change, summary],
+  );
   const identical =
     previewMatches(change.local, change.result) && previewMatches(change.incoming, change.result);
   return (
     <>
-      <DiffFileHeader change={change} labelId={labelId} showCounts={summary === null} />
+      <DiffFileHeader change={change} labelId={labelId} diff={finalDiff} />
       <div className="gitbin-diff-file-body">
         {summary ? (
           <p className="gitbin-hint">{summary}</p>
@@ -244,11 +271,26 @@ function DiffBlock({ change, labelId }: { readonly change: FileChange; readonly 
           <>
             {!identical && (
               <div className="gitbin-diff-sources">
-                <VersionDiff title="Local" baseline={change.baseline} file={change.local} />
-                <VersionDiff title="Remote" baseline={change.baseline} file={change.incoming} />
+                <VersionDiff
+                  title="Local"
+                  baseline={change.baseline}
+                  file={change.local}
+                  parsed={previewMatches(change.local, change.result) ? finalDiff : undefined}
+                />
+                <VersionDiff
+                  title="Remote"
+                  baseline={change.baseline}
+                  file={change.incoming}
+                  parsed={previewMatches(change.incoming, change.result) ? finalDiff : undefined}
+                />
               </div>
             )}
-            <VersionDiff title="Final" baseline={change.baseline} file={change.result} />
+            <VersionDiff
+              title="Final"
+              baseline={change.baseline}
+              file={change.result}
+              parsed={finalDiff}
+            />
           </>
         )}
       </div>
@@ -256,7 +298,131 @@ function DiffBlock({ change, labelId }: { readonly change: FileChange; readonly 
   );
 }
 
-function SyncDiffContent({ selection }: { readonly selection: HistorySelection }) {
+export interface HistoryProps {
+  readonly selection: HistorySelection;
+  readonly load?: ((change: FileChange) => Promise<FileChange>) | undefined;
+  readonly onDemand?: boolean;
+  readonly cached?: ((change: FileChange) => Promise<boolean>) | undefined;
+}
+
+function subscribeConnection(changed: () => void): () => void {
+  window.addEventListener("online", changed);
+  window.addEventListener("offline", changed);
+  return () => {
+    window.removeEventListener("online", changed);
+    window.removeEventListener("offline", changed);
+  };
+}
+
+function useCachedComparison(
+  change: FileChange,
+  cached: HistoryProps["cached"],
+  online: boolean,
+): boolean {
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setAvailable(false);
+    if (online) return;
+    void cached?.(change)
+      .then((value) => {
+        if (active) setAvailable(value);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [change, cached, online]);
+  return available;
+}
+
+function LazyDiffBlock({
+  change,
+  labelId,
+  load,
+  onDemand,
+  cached,
+}: {
+  readonly change: FileChange;
+  readonly labelId: string;
+  readonly load?: ((change: FileChange) => Promise<FileChange>) | undefined;
+  readonly onDemand: boolean;
+  readonly cached?: ((change: FileChange) => Promise<boolean>) | undefined;
+}) {
+  const online = useSyncExternalStore(subscribeConnection, () => navigator.onLine);
+  const availableOffline = useCachedComparison(change, cached, online);
+  const [loaded, setLoaded] = useState<FileChange | null>(null);
+  const [busy, setBusy] = useState(false);
+  const needsContent = [change.baseline, change.local, change.incoming, change.result].some(
+    (file) => file?.content && !file.binary && file.path !== null && file.text === null,
+  );
+  if (loaded || !needsContent || !load)
+    return <DiffBlock change={loaded ?? change} labelId={labelId} />;
+  const download = async () => {
+    if ((!navigator.onLine && !availableOffline) || busy) return;
+    setBusy(true);
+    try {
+      setLoaded(await load(change));
+    } catch {
+      // The load action reports failures through Obsidian's notification.
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <DiffFileHeader
+        change={change}
+        labelId={labelId}
+        diff={null}
+        action={
+          <PreviewRefresh online={online || availableOffline} busy={busy} download={download} />
+        }
+      />
+      <div className="gitbin-diff-file-body">
+        <p className="gitbin-hint">
+          {onDemand
+            ? "No preview available with on-demand downloads turned on. Download the comparison to see it."
+            : "No preview available. Download the comparison to see it."}
+          {!online && !availableOffline ? " Connect to the internet to download it." : ""}
+        </p>
+      </div>
+    </>
+  );
+}
+
+function PreviewRefresh({
+  online,
+  busy,
+  download,
+}: {
+  readonly online: boolean;
+  readonly busy: boolean;
+  readonly download: () => Promise<void>;
+}) {
+  return (
+    <IconButton
+      label={
+        !online
+          ? "Connect to download the comparison"
+          : busy
+            ? "Downloading comparison…"
+            : "Download comparison"
+      }
+      disabled={busy || !online}
+      aria-busy={busy}
+      onClick={() => void download()}
+    >
+      <RefreshCw
+        size={18}
+        aria-hidden="true"
+        className={busy ? "gitbin-refresh-spinning" : undefined}
+      />
+    </IconButton>
+  );
+}
+
+function SyncDiffContent({ selection, load, onDemand = false, cached }: HistoryProps) {
   const labelId = useId();
   const selectedFile = useRef<HTMLElement>(null);
   const virtualizer = useVirtualizer();
@@ -290,7 +456,13 @@ function SyncDiffContent({ selection }: { readonly selection: HistorySelection }
               aria-labelledby={labelId + change.result.id}
               data-file-id={change.result.id}
             >
-              <DiffBlock change={change} labelId={labelId + change.result.id} />
+              <LazyDiffBlock
+                change={change}
+                labelId={labelId + change.result.id}
+                load={load}
+                onDemand={onDemand}
+                cached={cached}
+              />
             </section>
           );
         })}
@@ -299,28 +471,28 @@ function SyncDiffContent({ selection }: { readonly selection: HistorySelection }
   );
 }
 
-export function FileHistory({ selection }: { readonly selection: HistorySelection }) {
+export function FileHistory({ selection, load, onDemand = false, cached }: HistoryProps) {
   return (
     <Virtualizer
       config={virtualizerConfig}
       className="gitbin-diff-scroll"
       contentClassName="gitbin-diff-scroll-content"
     >
-      <SyncDiffContent selection={selection} />
+      <SyncDiffContent selection={selection} load={load} onDemand={onDemand} cached={cached} />
     </Virtualizer>
   );
 }
 
 function DiffContent({
-  files,
+  diff,
   measure,
 }: {
-  readonly files: DiffFileInput;
+  readonly diff: FileDiffMetadata;
   readonly measure: () => void;
 }) {
   return (
-    <MultiFileDiff
-      {...files}
+    <FileDiff
+      fileDiff={diff}
       metrics={diffMetrics}
       options={{
         theme: "gitbin-obsidian",

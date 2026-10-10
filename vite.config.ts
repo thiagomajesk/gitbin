@@ -137,7 +137,7 @@ export default defineConfig(({ command, mode }) => ({
       cssFileName: "styles",
     },
     rolldownOptions: {
-      external: ["obsidian", "node:os"],
+      external: ["obsidian", "node:os", "@codemirror/state", "@codemirror/view"],
       output: { exports: "default", inlineDynamicImports: true, dynamicImportInCjs: false },
     },
   },

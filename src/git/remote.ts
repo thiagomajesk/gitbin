@@ -1,13 +1,8 @@
-import { Effect } from "effect";
-import { attempt, io, SyncError } from "../core/errors";
-import type { GitRemote, Publication, RemoteSnapshot } from "../core/ports";
-import { checkRoot, type Registration } from "../core/protocol";
+import { attempt } from "../core/errors";
+import { contentCatalog } from "./catalog";
 import { consolidation } from "./consolidation";
-import { candidate, readEntries, readFiles } from "./objects";
 import { allowedRemote } from "./remote-policy";
 import { type Connection, gitSession } from "./session";
-import { inspectVaults } from "./status";
-import { discoverVaults } from "./vaults";
 export function checkRemote(remote: string): void {
   const url = new URL(remote);
   if (!allowedRemote(url, /\s/.test(remote)))
@@ -16,73 +11,12 @@ export function checkRemote(remote: string): void {
     );
 }
 export function createGitRemote(connection: Connection) {
-  checkRemote(connection.url);
-  const session = gitSession(connection);
-  const read = Effect.fn("git.read")(function* (
-    vault: Registration,
-  ): Effect.fn.Return<RemoteSnapshot, SyncError> {
-    if (!checkRoot(vault.root) || vault.root.includes("/"))
-      return yield* new SyncError({
-        message: "Choose a portable repository folder for this vault.",
-      });
-    const fetched = yield* io(
-      "Cannot reach the repository. Check its HTTPS URL and authenticate with the server.",
-      session.fetch,
-    );
-    if (!fetched.revision) {
-      if (fetched.hasBranches)
-        return yield* new SyncError({
-          message: "This repository has branches but no main. Create main before connecting.",
-        });
-      return { revision: null, vaults: [], states: new Map(), files: new Map() };
-    }
-    const entries = yield* io("Cannot read the committed Git tree.", () =>
-      readEntries(fetched.repo, fetched.revision ?? "", vault),
-    );
-    const content = yield* io("Cannot read saved files.", () =>
-      readFiles(fetched.repo, entries, vault, (hashes) => session.hydrate(fetched.repo, hashes)),
-    );
-    const vaults = yield* attempt("Cannot read Gitbin storage layout.", () =>
-      discoverVaults(entries),
-    );
-    return { revision: fetched.revision, vaults, ...content };
+  return attempt("Cannot initialize the Git remote.", () => {
+    checkRemote(connection.url);
+    const session = gitSession(connection);
+    return {
+      catalog: contentCatalog(session),
+      maintenance: consolidation(connection),
+    };
   });
-  const publish = Effect.fn("git.publish")(function* (
-    base: RemoteSnapshot,
-    publication: Publication,
-  ): Effect.fn.Return<{ published: boolean; revision: string | null }, SyncError> {
-    const repo = yield* io("Cannot open the private Git cache.", session.repo);
-    const hash = yield* io("Cannot create the next sync commit.", () =>
-      candidate(repo, base, publication, connection.identity),
-    );
-    return yield* io(
-      "Cannot upload files. Check that your authentication allows Git write access.",
-      async () => {
-        await repo.refStore.writeRef("refs/heads/main", hash);
-        try {
-          await session.run(["push", "origin", "refs/heads/main:refs/heads/main"]);
-          return { published: true, revision: hash };
-        } catch (error) {
-          const current = (await session.fetch()).revision;
-          if (current === hash) return { published: true, revision: hash };
-          if (current !== base.revision) return { published: false, revision: null };
-          throw error;
-        }
-      },
-    );
-  });
-  const inspect = Effect.fn("git.inspect")(function* (
-    vault: Registration,
-    checkpoint: string | null,
-  ) {
-    const snapshot = yield* read(vault);
-    const repo = yield* io("Cannot inspect Git state.", session.repo);
-    return yield* io("Cannot inspect vault changes.", () =>
-      inspectVaults(repo, snapshot, vault.root, checkpoint),
-    );
-  });
-  return { read, publish, inspect, maintenance: consolidation(connection) } satisfies GitRemote & {
-    inspect: typeof inspect;
-    maintenance: ReturnType<typeof consolidation>;
-  };
 }

@@ -1,6 +1,23 @@
 import type { NetworkPolicy } from "just-git";
 import { requestUrl } from "obsidian";
 
+// A UI deadline does not cancel requestUrl. Keep its slot until the native request settles.
+let requests: Promise<void> = Promise.resolve();
+
+function serializedRequest<A>(request: () => Promise<A>): Promise<A> {
+  const started = requests.then(() => {
+    const pending = request();
+    return { pending, result: withDeadline(pending) };
+  });
+  requests = started
+    .then(({ pending }) => pending)
+    .then(
+      () => undefined,
+      () => undefined,
+    );
+  return started.then(({ result }) => result);
+}
+
 async function withDeadline<A>(pending: Promise<A>): Promise<A> {
   let timer: number | undefined;
   try {
@@ -20,7 +37,7 @@ async function withDeadline<A>(pending: Promise<A>): Promise<A> {
 export const obsidianFetch: NonNullable<NetworkPolicy["fetch"]> = async (input, init) => {
   const request = new Request(input, init);
   const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
-  const response = await withDeadline(
+  const response = await serializedRequest(() =>
     requestUrl({
       url: request.url,
       method: request.method,

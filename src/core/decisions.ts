@@ -1,4 +1,22 @@
 /** Pure decisions used by the runtime and verified by LemmaScript. */
+export type Scheduling = {
+  setupComplete: boolean;
+  autoSync: boolean;
+  uploadDelay: number;
+  remoteCheckInterval: number;
+  downloadMode: string;
+};
+export function schedulingChanged(before: Scheduling, after: Scheduling): boolean {
+  //@ verify
+  //@ ensures \result === (before.setupComplete !== after.setupComplete || before.autoSync !== after.autoSync || before.uploadDelay !== after.uploadDelay || before.remoteCheckInterval !== after.remoteCheckInterval || before.downloadMode !== after.downloadMode)
+  return (
+    before.setupComplete !== after.setupComplete ||
+    before.autoSync !== after.autoSync ||
+    before.uploadDelay !== after.uploadDelay ||
+    before.remoteCheckInterval !== after.remoteCheckInterval ||
+    before.downloadMode !== after.downloadMode
+  );
+}
 export type ConnectionIdentity = {
   remote: string;
   root: string;

@@ -4,4 +4,3 @@ export const CheckpointFile = Schema.Struct({
   path: Schema.NullOr(Schema.String),
   hash: Schema.String,
 });
-export type CheckpointFile = typeof CheckpointFile.Type;

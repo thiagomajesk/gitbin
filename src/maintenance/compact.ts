@@ -1,67 +1,47 @@
-import { BinaryObjects, binaryObject, blobId } from "../core/blobs";
-import { binaryContent, contentFromBytes } from "../core/content";
-import { FileDocument } from "../core/file";
-import { statePath } from "../core/storage-layout";
+import {
+  decodeInventory,
+  type InventoryFile,
+  inventoryPath,
+  objectReference,
+} from "../core/inventory";
+import { RawDocument } from "../core/raw-document";
 import type { MigrationSnapshot } from "./types";
 import { repositoryVaults, validateCurrent } from "./validation";
 
-function vaultBlobs(source: MigrationSnapshot, root: string): BinaryObjects {
-  const blobs = new BinaryObjects();
-  for (const [path, bytes] of source.files) {
-    if (path.startsWith(root + "/")) {
-      const content = binaryContent(bytes);
-      blobs.import(new Map([[blobId(content), content]]));
-    } else if (path.startsWith(".gitbin/vaults/" + root + "/retained/")) {
-      const id = path.slice(path.lastIndexOf("/") + 1);
-      blobs.import(new Map([[id, binaryObject(id, bytes)]]));
-    }
-  }
-  return blobs;
-}
-function compactFile(
-  source: MigrationSnapshot,
-  root: string,
-  id: string,
-  bytes: Uint8Array,
-  blobs: BinaryObjects,
-): readonly [string, Uint8Array] | null {
-  const old = new FileDocument(id, undefined, blobs);
-  const fresh = new FileDocument(id, undefined, blobs);
-  try {
-    old.merge(bytes);
-    const locations = old.locations().filter(([, value]) => value.path !== null);
-    if (locations.length > 1)
-      throw new Error("Resolve conflicting file locations before consolidating.");
-    const target = locations[0]?.[1].path;
-    if (!target) return null;
-    const content = source.files.get(root + "/" + target);
-    if (!content) throw new Error("Missing committed file.");
-    fresh.edit(contentFromBytes(target, content));
-    fresh.move(target);
-    const state = fresh.bytes();
-    return [statePath(root, id, state), state];
-  } finally {
-    old.destroy();
-    fresh.destroy();
-  }
-}
 export function compactRepository(source: MigrationSnapshot): MigrationSnapshot {
   const files = new Map([...source.files].filter(([path]) => !path.startsWith(".gitbin/vaults/")));
   for (const root of repositoryVaults(source.files)) {
-    const blobs = vaultBlobs(source, root);
-    const records = [...source.files].filter(
-      ([path]) => path.startsWith(".gitbin/vaults/" + root + "/") && path.endsWith(".bin"),
-    );
-    for (const [path, bytes] of records) {
-      const result = compactFile(
-        source,
-        root,
-        path.slice(path.lastIndexOf("/") + 1).slice(0, -4),
-        bytes,
-        blobs,
-      );
-      if (result) files.set(...result);
+    const bytes = source.files.get(inventoryPath(root));
+    if (!bytes) throw new Error("Missing inventory before consolidation.");
+    const records: InventoryFile[] = [];
+    for (const file of decodeInventory(bytes, root).files) {
+      if (file.path === null) continue;
+      const content = source.files.get(root + "/" + file.path);
+      if (!content) throw new Error("Missing committed file.");
+      const reference = objectReference(content);
+      const document = new RawDocument();
+      try {
+        document.edit(content, file.kind);
+        const state = document.bytes();
+        files.set(file.statePath, state);
+        records.push({
+          ...file,
+          state: objectReference(state),
+          content: reference,
+          locations: [
+            {
+              id: crypto.randomUUID(),
+              path: file.path,
+              parents: [],
+              contentHash: reference.hash,
+            },
+          ],
+        });
+      } finally {
+        document.close();
+      }
     }
+    files.set(inventoryPath(root), new TextEncoder().encode(JSON.stringify({ files: records })));
   }
   const result = { ...source, files };
   validateCurrent(result);

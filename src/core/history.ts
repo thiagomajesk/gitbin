@@ -1,8 +1,8 @@
 import { Schema } from "effect";
-import { BinaryObjects } from "./blobs";
 import { contentHash } from "./content";
 import { describeChange } from "./decisions";
 import { FileDocument } from "./file";
+import { ObjectReference } from "./inventory";
 import { historyLocationOrder } from "./order-decisions";
 
 const FileSnapshot = Schema.Struct({
@@ -11,6 +11,7 @@ const FileSnapshot = Schema.Struct({
   text: Schema.NullOr(Schema.String),
   binary: Schema.Boolean,
   hash: Schema.String,
+  content: Schema.optionalKey(ObjectReference),
 });
 export type FileSnapshot = typeof FileSnapshot.Type;
 const FileChange = Schema.Struct({
@@ -51,23 +52,6 @@ export function snapshotFiles(states: Iterable<FileDocument>): ReadonlyArray<Fil
   });
 }
 
-export function snapshotUpdates(
-  updates: ReadonlyMap<string, Uint8Array>,
-  blobs = new BinaryObjects(),
-): ReadonlyArray<FileSnapshot> {
-  const states: FileDocument[] = [];
-  try {
-    for (const [id, bytes] of updates) {
-      const file = new FileDocument(id, undefined, blobs);
-      states.push(file);
-      file.merge(bytes);
-    }
-    return snapshotFiles(states);
-  } finally {
-    for (const file of states) file.destroy();
-  }
-}
-
 export function recordHistory(
   state: HistoryState,
   local: ReadonlyArray<FileSnapshot>,
@@ -99,8 +83,6 @@ export function recordHistory(
       changes,
     },
     ...state.entries,
-  ].slice(0, 100);
-  // Evict whole older entries, never portions of a comparison. Keep the newest sync intact.
-  while (entries.length > 1 && JSON.stringify(entries).length > 2_500_000) entries.pop();
+  ];
   return { checkpoint: result, entries };
 }

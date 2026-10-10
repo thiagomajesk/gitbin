@@ -10,6 +10,17 @@ import { checkPushLease } from "../src/git/push-lease";
 import { gitServer } from "./git-server";
 
 const servers: Awaited<ReturnType<typeof gitServer>>[] = [];
+it("preserves executable modes while replacing repository history", async () => {
+  const f = await fixture();
+  git(f.work, "update-index", "--chmod=+x", "keep.txt");
+  git(f.work, "commit", "-m", "executable");
+  git(f.work, "push", "origin", "main");
+  const preview = await Effect.runPromise(f.service.preview());
+  await Effect.runPromise(f.service.apply(preview.sourceRevision, preview.revision));
+  expect(git(f.remote, "ls-tree", "main", "keep.txt")).toMatch(/^100755 blob /);
+  expect(git(f.remote, "show", "main:keep.txt")).toBe("latest");
+  expect(git(f.remote, "rev-list", "--count", "main")).toBe("1");
+});
 afterEach(async () => {
   for (const server of servers.splice(0)) await server.close();
 });

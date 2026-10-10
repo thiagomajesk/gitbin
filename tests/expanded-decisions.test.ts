@@ -1,11 +1,7 @@
-import { expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { credentialScope, matchingSavedCredentials } from "../src/auth/credential-decisions";
-import { BinaryObjects } from "../src/core/blobs";
 import { contentEqual, textContent } from "../src/core/content";
-import { FileDocument } from "../src/core/file";
 import { hiddenPath, overlaps, safeStoragePath } from "../src/core/path-rules";
-import { captureRebasedEdit, reconcileConsolidation } from "../src/core/reconcile";
-import { conflict, writeDisposition } from "../src/core/reconcile-decisions";
 import { publicationState, sameConsolidation } from "../src/git/publication-decisions";
 import { comparisonSummary, previewMatches } from "../src/ui/history-decisions";
 import { acknowledgementsAccepted, repositoryState, syncState } from "../src/ui/status-decisions";
@@ -36,14 +32,6 @@ it("keeps optional content semantics and the original text bytes", () => {
   expect(contentEqual(null, textContent(""))).toBe(false);
   expect(contentEqual({ type: "binary", value: "same" }, textContent("same"))).toBe(false);
   expect(textContent("\ufeff😀\ud800").value).toBe("\ufeff😀\ud800");
-});
-it("distinguishes a missing reconciliation baseline from a recorded deletion", () => {
-  expect(conflict(null, "note", null, false)).toBe(true);
-  expect(conflict(null, "note", null, true)).toBe(false);
-  expect(conflict("own", "remote", "base", true)).toBe(true);
-  expect(writeDisposition(true, false, false)).toBe("blocked");
-  expect(writeDisposition(true, false, true)).toBe("unchanged");
-  expect(writeDisposition(false, false, false)).toBe("write");
 });
 it("does not reuse credentials for a different repository or username", () => {
   const credentials = { type: "basic" as const, username: "alice", password: "secret" };
@@ -95,46 +83,4 @@ it("keeps status precedence and requires every acknowledgement", () => {
   );
   expect(acknowledgementsAccepted([true, true, true])).toBe(true);
   expect(acknowledgementsAccepted([true, false, true])).toBe(false);
-});
-
-it("does not decode remote content when a rebased local file has not changed", () => {
-  const file = new FileDocument("unchanged");
-  file.baselinePath = "note";
-  file.baselineContent = textContent("same");
-  const read = vi.spyOn(file, "content", "get").mockImplementation(() => {
-    throw new Error("Unexpected content read");
-  });
-  try {
-    expect(captureRebasedEdit(file, new Map(), new Map(), new BinaryObjects())).toBe(false);
-    expect(
-      captureRebasedEdit(
-        file,
-        new Map([["note", textContent("same")]]),
-        new Map(),
-        new BinaryObjects(),
-      ),
-    ).toBe(false);
-    expect(read).not.toHaveBeenCalled();
-  } finally {
-    file.destroy();
-  }
-});
-it("does not read the content of an untracked deletion during consolidation replay", () => {
-  const file = new FileDocument("deleted");
-  file.move(null);
-  const read = vi.spyOn(file, "content", "get").mockImplementation(() => {
-    throw new Error("Unexpected content read");
-  });
-  try {
-    const result = reconcileConsolidation(
-      new Map([[file.id, file]]),
-      { revision: null, vaults: [], states: new Map(), files: new Map() },
-      null,
-      new BinaryObjects(),
-    );
-    expect(result.size).toBe(0);
-    expect(read).not.toHaveBeenCalled();
-  } finally {
-    file.destroy();
-  }
 });

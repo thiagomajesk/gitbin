@@ -1,11 +1,9 @@
 import { Schema } from "effect";
-import { BinaryObjects, binaryObject, blobId } from "../core/blobs";
-import { binaryContent, contentFromBytes, type FileContent } from "../core/content";
-import { FileDocument } from "../core/file";
+import { AvailabilityJournal } from "../core/availability";
+import { decodeInventory, inventoryPath, validateInventory, verifyObject } from "../core/inventory";
 import { Metadata, metadataPath } from "../core/metadata";
-import { hiddenPath, safeSnapshotPath } from "../core/path-rules";
-import { validateRemote } from "../core/projection";
-import { Journal } from "../core/protocol";
+import { safeSnapshotPath } from "../core/path-rules";
+import { RawDocument } from "../core/raw-document";
 import { discoverVaults } from "../git/vaults";
 import type { MigrationSnapshot } from "./types";
 
@@ -13,69 +11,53 @@ export function repositoryVaults(files: ReadonlyMap<string, Uint8Array>): string
   return [
     ...new Set(
       [...files.keys()].flatMap((path) => {
-        const match = /^\.gitbin\/vaults\/([^/]+)\/(?:notes|attachments)\/[a-f0-9-]{36}\.bin$/.exec(
-          path,
-        );
-        return match?.[1] ? [match[1]] : [];
+        const root =
+          /^\.gitbin\/vaults\/([^/]+)\/(?:inventory\.json|(?:notes|attachments)\/[a-f0-9-]{36}\.bin)$/.exec(
+            path,
+          )?.[1];
+        return root ? [root] : [];
       }),
     ),
   ].sort();
 }
-
 function validateVault(files: ReadonlyMap<string, Uint8Array>, root: string): void {
-  const states = new Map<string, Uint8Array>();
-  const contents = new Map<string, FileContent>();
-  const blobs = new Map<string, FileContent>();
-  for (const [path, bytes] of files) {
-    if (
-      path.startsWith(".gitbin/vaults/" + root + "/notes/") ||
-      path.startsWith(".gitbin/vaults/" + root + "/attachments/")
-    )
-      states.set(path.split("/").at(-1)?.slice(0, -4) ?? "", bytes);
-    else if (path.startsWith(".gitbin/vaults/" + root + "/retained/")) {
-      const id = path.split("/").at(-1) ?? "";
-      blobs.set(id, binaryObject(id, bytes));
-    } else if (path.startsWith(root + "/")) {
-      const relative = path.slice(root.length + 1);
-      if (!hiddenPath(relative)) contents.set(relative, contentFromBytes(relative, bytes));
-      const content = binaryContent(bytes);
-      blobs.set(blobId(content), content);
+  const inventory = files.get(inventoryPath(root));
+  if (!inventory) throw new Error("Missing vault inventory.");
+  for (const file of decodeInventory(inventory, root).files) {
+    const state = files.get(file.statePath);
+    const path =
+      file.path === null
+        ? `.gitbin/vaults/${root}/retained/${file.content.hash}`
+        : root + "/" + file.path;
+    const content = files.get(path);
+    if (!state || !content) throw new Error("Missing inventory object.");
+    verifyObject(state, file.state);
+    verifyObject(content, file.content);
+    const document = new RawDocument(state);
+    try {
+      document.verify(file.content);
+    } finally {
+      document.close();
     }
   }
-  validateRemote({
-    revision: null,
-    vaults: [{ name: root, root }],
-    states,
-    files: contents,
-    blobs,
-  });
 }
-
 function validateDevice(files: ReadonlyMap<string, Uint8Array>): void {
-  const journal = Schema.decodeUnknownSync(Journal, { onExcessProperty: "error" })(
+  const journal = Schema.decodeUnknownSync(AvailabilityJournal, { onExcessProperty: "error" })(
     JSON.parse(new TextDecoder().decode(files.get("journal.json"))),
   );
-  const blobs = new BinaryObjects();
-  for (const id of journal.blobs) {
-    const bytes = files.get("blobs/" + id);
-    if (!bytes) throw new Error("Missing device binary object.");
-    blobs.import(new Map([[id, binaryObject(id, bytes)]]));
+  for (const entry of journal.entries) {
+    validateInventory({ files: [entry.file] }, journal.vaultRoot);
+    if (entry.base) validateInventory({ files: [entry.base] }, journal.vaultRoot);
   }
-  for (const stored of journal.files) {
-    const file = new FileDocument(stored.id, stored, blobs);
-    try {
-      void file.content;
-      file.binaryIds(true);
-    } finally {
-      file.destroy();
-    }
+  for (const [path, bytes] of files) {
+    if (path.startsWith("objects/"))
+      verifyObject(bytes, { hash: path.slice(8), bytes: bytes.length });
   }
   for (const intent of journal.intents) {
-    blobs.resolve(intent.before);
-    blobs.resolve(intent.after);
+    if (intent.after && !files.has("objects/" + intent.after.hash))
+      throw new Error("Missing interrupted-write object.");
   }
 }
-
 export function validateCurrent(snapshot: MigrationSnapshot): void {
   if (snapshot.kind === "device") {
     validateDevice(snapshot.files);
@@ -84,9 +66,8 @@ export function validateCurrent(snapshot: MigrationSnapshot): void {
   Schema.decodeUnknownSync(Metadata, { onExcessProperty: "error" })(
     JSON.parse(new TextDecoder().decode(snapshot.files.get(metadataPath))),
   );
-  for (const path of snapshot.files.keys()) {
+  for (const path of snapshot.files.keys())
     if (!safeSnapshotPath(path)) throw new Error("Unsafe snapshot path.");
-  }
   discoverVaults(new Map([...snapshot.files.keys()].map((path) => [path, ""])));
   for (const root of repositoryVaults(snapshot.files)) validateVault(snapshot.files, root);
 }

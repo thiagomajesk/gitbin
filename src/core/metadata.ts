@@ -7,6 +7,7 @@ export const migrationIds = Object.freeze([
   "binary-content-references",
   "unified-metadata",
   "vault-storage",
+  "content-inventory",
 ]);
 export const metadataPath = ".gitbin/metadata.json";
 export const Metadata = Schema.Struct({

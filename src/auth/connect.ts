@@ -34,7 +34,7 @@ export async function establishConnection(
   authentication: Authentication,
   username: string,
   commitEmail: string,
-  preferences?: SyncPreferences,
+  preferences?: Partial<SyncPreferences>,
 ) {
   if (actions.store.getSnapshot().config.setupComplete)
     throw new Error("Disconnect this vault before importing another connection.");

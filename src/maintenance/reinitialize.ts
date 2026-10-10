@@ -1,11 +1,48 @@
-import { contentFromBytes } from "../core/content";
-import { FileDocument } from "../core/file";
+import { rawContentKind } from "../core/content";
+import { type InventoryFile, inventoryPath, objectReference } from "../core/inventory";
 import { currentMetadata, metadataPath } from "../core/metadata";
-import { hiddenPath, metadataEntry } from "../core/path-rules";
+import { hiddenPath, metadataEntry, stateLocation } from "../core/path-rules";
 import { checkRoot, validateVaults, validPath } from "../core/protocol";
-import { statePath } from "../core/storage-layout";
+import { RawDocument } from "../core/raw-document";
 import type { MigrationSnapshot } from "./types";
 import { validateCurrent } from "./validation";
+
+export function reinitializationRoots(paths: Iterable<string>, roots: readonly string[]): string[] {
+  const discovered = [...paths].flatMap((path) => {
+    const root = /^\.gitbin\/vaults\/([^/]+)\//.exec(path)?.[1];
+    return root && checkRoot(root) ? [root] : [];
+  });
+  return [...new Set([...roots, ...discovered])];
+}
+
+function rebuildFile(
+  files: Map<string, Uint8Array>,
+  root: string,
+  path: string,
+  bytes: Uint8Array,
+): InventoryFile {
+  const id = crypto.randomUUID();
+  const kind = rawContentKind(path, bytes);
+  const content = objectReference(bytes);
+  const statePath = stateLocation(root, id, kind === "binary");
+  const document = new RawDocument();
+  try {
+    document.edit(bytes, kind);
+    const state = document.bytes();
+    files.set(statePath, state);
+    return {
+      id,
+      path,
+      kind,
+      content,
+      statePath,
+      state: objectReference(state),
+      locations: [{ id: crypto.randomUUID(), path, parents: [], contentHash: content.hash }],
+    };
+  } finally {
+    document.close();
+  }
+}
 
 /** Recovery must never depend on decoding the metadata it is replacing. */
 export function reinitializeRepository(
@@ -15,30 +52,20 @@ export function reinitializeRepository(
   if (source.kind !== "repository" || roots.length === 0)
     throw new Error("Select at least one vault to reinitialize.");
   // Folder names remain useful even when their state bytes cannot be decoded.
-  const discovered = [...source.files.keys()].flatMap((path) => {
-    const root = /^\.gitbin\/vaults\/([^/]+)\//.exec(path)?.[1];
-    return root && checkRoot(root) ? [root] : [];
-  });
-  const vaults = [...new Set([...roots, ...discovered])];
+  const vaults = reinitializationRoots(source.files.keys(), roots);
   validateVaults(vaults.map((root) => ({ root, name: root })));
   const files = new Map([...source.files].filter(([path]) => !metadataEntry(path)));
   files.set(metadataPath, new TextEncoder().encode(JSON.stringify(currentMetadata())));
   for (const root of vaults) {
+    const records: InventoryFile[] = [];
     for (const [path, bytes] of source.files) {
       if (!path.startsWith(root + "/")) continue;
       const relative = path.slice(root.length + 1);
       if (hiddenPath(relative)) continue;
       if (!validPath(relative)) throw new Error("Unsupported vault file path: " + relative);
-      const file = new FileDocument(crypto.randomUUID());
-      try {
-        file.edit(contentFromBytes(relative, bytes));
-        file.move(relative);
-        const state = file.bytes();
-        files.set(statePath(root, file.id, state), state);
-      } finally {
-        file.destroy();
-      }
+      records.push(rebuildFile(files, root, relative, bytes));
     }
+    files.set(inventoryPath(root), new TextEncoder().encode(JSON.stringify({ files: records })));
   }
   const result = { kind: "repository" as const, files };
   validateCurrent(result);

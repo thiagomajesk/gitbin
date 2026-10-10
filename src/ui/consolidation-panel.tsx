@@ -1,6 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./controls";
+import { Progress } from "./progress";
 import { acknowledgementsAccepted } from "./status-decisions";
 export interface ConsolidationSummary {
   readonly reinitialize?: boolean;
@@ -16,6 +17,7 @@ export function ConsolidationPanel({
   readonly cancel: () => void;
 }) {
   const action = summary.reinitialize ? "Reinitialize" : "Consolidate";
+  const loadingAction = summary.reinitialize ? "Reinitializing…" : "Consolidating…";
   const [acknowledgements, setAcknowledgements] = useState([false, false, false]);
   const accepted = acknowledgementsAccepted(acknowledgements);
   const [busy, setBusy] = useState(false);
@@ -73,12 +75,12 @@ export function ConsolidationPanel({
             disabled={!accepted || busy}
             onClick={() => void submit()}
           >
-            {busy ? "Applying…" : action}
+            {busy ? loadingAction : action}
           </Button>
         </div>
         {busy ? (
           <div className="gitbin-maintenance-progress">
-            <progress aria-label="Repository maintenance progress" />
+            <Progress label="Repository maintenance progress" />
             <p role="status">{progress}</p>
           </div>
         ) : null}

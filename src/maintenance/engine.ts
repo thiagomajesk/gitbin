@@ -5,7 +5,9 @@ import { attempt, SyncError } from "../core/errors";
 import { migrationIds, migrationPrefix } from "../core/metadata";
 import { binaryReferencesMigration } from "./binary-references";
 import { compactRepository } from "./compact";
+import { contentInventoryMigration } from "./content-inventory";
 import { snapshotMetadata, stampMetadata } from "./metadata";
+import { reinitializeRepository } from "./reinitialize";
 import type { ConsolidatedData, MigrationSnapshot, StorageMigration } from "./types";
 import { unifiedMetadataMigration } from "./unified-metadata";
 import { repositoryVaults, validateCurrent } from "./validation";
@@ -15,6 +17,7 @@ export const storageMigrations: readonly StorageMigration[] = Object.freeze([
   binaryReferencesMigration,
   unifiedMetadataMigration,
   vaultStorageMigration,
+  contentInventoryMigration,
 ]);
 function registryIds(registry: readonly StorageMigration[]): string[] {
   const ids = registry.map((step) => step.id);
@@ -78,18 +81,27 @@ export function createMigrationEngine(registry: readonly StorageMigration[] = st
   const prepare = Effect.fn("migration.consolidate")(function* (
     repository: MigrationSnapshot,
     device: MigrationSnapshot | null = null,
+    rebuildRoots?: readonly string[],
   ): Effect.fn.Return<ConsolidatedData, SyncError> {
     if (repository.kind !== "repository" || (device && device.kind !== "device"))
       return yield* new SyncError({
         message: "Consolidation requires a repository and optional device snapshot.",
       });
-    const migrated = yield* migrate(repository);
+    const migrated = rebuildRoots
+      ? {
+          snapshot: yield* attempt("Cannot rebuild repository metadata.", () =>
+            reinitializeRepository(repository, rebuildRoots),
+          ),
+          steps: [],
+        }
+      : yield* migrate(repository);
     const local = device ? yield* migrate(device) : null;
     return yield* attempt("Cannot finalize consolidation.", () => {
       const consolidationHash = bytesToHex(sha256(crypto.getRandomValues(new Uint8Array(32))));
       const ids = registryIds(registry);
       const metadata = { consolidationHash, appliedMigrations: ids };
-      const result = stampMetadata(compactRepository(migrated.snapshot), metadata);
+      const compacted = rebuildRoots ? migrated.snapshot : compactRepository(migrated.snapshot);
+      const result = stampMetadata(compacted, metadata);
       return {
         repository: result,
         device: local ? local.snapshot : null,

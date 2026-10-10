@@ -4,6 +4,11 @@ export function discoverVaults(entries: ReadonlyMap<string, string>): ReadonlyAr
   for (const path of entries.keys()) {
     if (!path.startsWith(".gitbin/")) continue;
     if (path === ".gitbin/metadata.json") continue;
+    const inventory = /^\.gitbin\/vaults\/([^/]+)\/inventory\.json$/.exec(path);
+    if (inventory?.[1]) {
+      roots.add(inventory[1]);
+      continue;
+    }
     if (/^\.gitbin\/vaults\/[^/]+\/retained\/[a-f0-9]{40}$/.test(path)) continue;
     const match = /^\.gitbin\/vaults\/([^/]+)\/(?:notes|attachments)\/[a-f0-9-]{36}\.bin$/.exec(
       path,

@@ -4,6 +4,7 @@ import type { VaultStatus } from "../git/status";
 import type { SyncIssue } from "./sync-issue";
 
 export interface UiSnapshot {
+  readonly downloads?: { readonly used: number };
   readonly history?: ReadonlyArray<HistoryEntry>;
   readonly historyWarning?: string | null;
   readonly vaults?: ReadonlyArray<VaultStatus>;

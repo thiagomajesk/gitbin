@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { parseDiffFromFile } from "@pierre/diffs";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -12,19 +14,17 @@ import type { HistorySelection } from "../src/ui/sync-history";
 import { SyncStatus } from "../src/ui/sync-status";
 
 vi.mock("obsidian", () => ({ setTooltip: vi.fn() }));
+vi.mock("@pierre/diffs", async (original) => {
+  const actual = await original<typeof import("@pierre/diffs")>();
+  return { ...actual, parseDiffFromFile: vi.fn(actual.parseDiffFromFile) };
+});
 
 vi.mock("@pierre/diffs/react", () => ({
   Virtualizer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   useVirtualizer: () => ({ scrollTo, getOffsetInScrollContainer }),
-  MultiFileDiff: ({
-    oldFile,
-    newFile,
-  }: {
-    oldFile: { contents: string } | null;
-    newFile: { contents: string } | null;
-  }) => (
+  FileDiff: ({ fileDiff }: { fileDiff: { deletionLines: string[]; additionLines: string[] } }) => (
     <div data-testid="pierre-diff">
-      {oldFile?.contents} → {newFile?.contents}
+      {fileDiff.deletionLines.join("")} → {fileDiff.additionLines.join("")}
     </div>
   ),
 }));
@@ -198,6 +198,87 @@ function historySelection(before: FileSnapshot, after: FileSnapshot): HistorySel
   if (!entry) throw new Error("Missing history entry");
   return { entry, change: entry.changes[0] ?? null };
 }
+it("shares one parsed comparison between counts and matching remote/final panels", () => {
+  const before: FileSnapshot = {
+    id: "note",
+    path: "Note.md",
+    text: "before",
+    hash: "before",
+    binary: false,
+  };
+  const after = { ...before, text: "after", hash: "after" };
+  vi.mocked(parseDiffFromFile).mockClear();
+  render(<FileHistory selection={historySelection(before, after)} />);
+  expect(parseDiffFromFile).toHaveBeenCalledTimes(1);
+  expect(screen.getAllByTestId("pierre-diff").length).toBeGreaterThan(0);
+});
+it("allows a cached comparison to load offline", async () => {
+  const connection = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  const before: FileSnapshot = {
+    id: "cached",
+    path: "Cached.md",
+    text: null,
+    hash: "before",
+    binary: false,
+    content: { hash: "a".repeat(40), bytes: 3 },
+  };
+  const selection = historySelection(before, { ...before, hash: "after" });
+  const change = selection.change;
+  if (!change) throw new Error("Missing comparison");
+  const load = vi.fn(async () => ({ ...change, result: { ...change.result, text: "New" } }));
+  try {
+    render(<FileHistory selection={selection} load={load} cached={async () => true} />);
+    const button = await screen.findByRole<HTMLButtonElement>("button", {
+      name: "Download comparison",
+    });
+    expect(button.disabled).toBe(false);
+    await userEvent.setup().click(button);
+    expect(load).toHaveBeenCalledTimes(1);
+  } finally {
+    connection.mockRestore();
+  }
+});
+
+it("blocks comparison downloads offline and keeps loaded previews visible after disconnecting", async () => {
+  const connection = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  const before: FileSnapshot = {
+    id: "lazy",
+    path: "Note.md",
+    text: null,
+    hash: "before",
+    binary: false,
+    content: { hash: "a".repeat(40), bytes: 3 },
+  };
+  const selection = historySelection(before, { ...before, hash: "after" });
+  const change = selection.change;
+  if (!change) throw new Error("Missing comparison");
+  const load = vi.fn(async () => ({ ...change, result: { ...change.result, text: "New" } }));
+  try {
+    render(<FileHistory selection={selection} load={load} onDemand />);
+    const user = userEvent.setup();
+    const button = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Connect to download the comparison",
+    });
+    expect(button.closest("header")).not.toBeNull();
+    expect(button.disabled).toBe(true);
+    expect(screen.getByText(/on-demand downloads turned on/)).toBeTruthy();
+    await user.click(button);
+    expect(load).not.toHaveBeenCalled();
+    connection.mockReturnValue(true);
+    await act(() => window.dispatchEvent(new Event("online")));
+    await user.click(screen.getByRole("button", { name: "Download comparison" }));
+    expect(load).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Download comparison" })).toBeNull(),
+    );
+    connection.mockReturnValue(false);
+    await act(() => window.dispatchEvent(new Event("offline")));
+    expect(screen.queryByText(/No preview available/)).toBeNull();
+    expect(load).toHaveBeenCalledTimes(1);
+  } finally {
+    connection.mockRestore();
+  }
+});
 
 it.each(["Images/Diagram.png", "Documents/Guide.pdf", "Audio/Recording.mp3"])(
   "skips text comparison and line counts for binary %s",

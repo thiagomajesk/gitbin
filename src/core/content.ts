@@ -13,8 +13,12 @@ export function encodeBytes(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
   return btoa(binary);
 }
-export const decodeBytes = (value: string): Uint8Array =>
-  Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+export function decodeBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
 export const binaryContent = (bytes: Uint8Array): FileContent => ({
   type: "binary",
   value: encodeBytes(bytes),
@@ -63,6 +67,18 @@ const textExtensions = new Set([
   "sql",
   "tex",
 ]);
+function textPath(path: string): boolean {
+  return textExtensions.has(path.split(".").at(-1)?.toLowerCase() ?? "");
+}
+export function rawContentKind(path: string, bytes: Uint8Array): "text" | "binary" {
+  if (!textPath(path) || bytes.includes(0)) return "binary";
+  try {
+    new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    return "text";
+  } catch {
+    return "binary";
+  }
+}
 export function contentFromBytes(path: string, bytes: Uint8Array): FileContent {
   const extension = path.split(".").at(-1)?.toLowerCase() ?? "";
   if (textExtensions.has(extension) && !bytes.includes(0)) {

@@ -17,6 +17,8 @@ function SeqFind<T>(s: seq<T>, p: T -> bool): Option<T>
   else SeqFind(s[1..], p)
 }
 
+datatype Scheduling = Scheduling(setupComplete: bool, autoSync: bool, uploadDelay: int, remoteCheckInterval: int, downloadMode: string)
+
 datatype ConnectionIdentity = ConnectionIdentity(remote: string, root: string, username: string, commitEmail: string, secretId: string)
 
 datatype Snapshot = Snapshot(id: string, path: Option<string>, text: Option<string>, binary: bool, hash: string)
@@ -26,6 +28,16 @@ datatype ChangeKind = combined | local | incoming | synced
 datatype Change = Change(kind: ChangeKind, baseline: Option<Snapshot>, local: Option<Snapshot>, incoming: Option<Snapshot>, result: Snapshot)
 
 datatype MigrationSequence = supported | newer | invalid
+
+function schedulingChanged(before: Scheduling, after: Scheduling): bool
+{
+  (((((before.setupComplete != after.setupComplete) || (before.autoSync != after.autoSync)) || (before.uploadDelay != after.uploadDelay)) || (before.remoteCheckInterval != after.remoteCheckInterval)) || (before.downloadMode != after.downloadMode))
+}
+
+lemma schedulingChanged_ensures(before: Scheduling, after: Scheduling)
+  ensures (schedulingChanged(before, after) == (((((before.setupComplete != after.setupComplete) || (before.autoSync != after.autoSync)) || (before.uploadDelay != after.uploadDelay)) || (before.remoteCheckInterval != after.remoteCheckInterval)) || (before.downloadMode != after.downloadMode)))
+{
+}
 
 function connectionChanged(left: ConnectionIdentity, right: ConnectionIdentity): bool
 {

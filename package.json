@@ -24,6 +24,8 @@
     "proof:coverage": "node tooling/proof-coverage.mjs"
   },
   "dependencies": {
+    "@codemirror/state": "6.5.0",
+    "@codemirror/view": "6.38.6",
     "@noble/hashes": "2.4.0",
     "@pierre/diffs": "1.5.2",
     "@radix-ui/react-label": "2.1.15",

@@ -1,6 +1,8 @@
 import { Effect } from "effect";
 import type { App, DataAdapter } from "obsidian";
 import { expect, it, vi } from "vitest";
+import { objectReference } from "../src/core/inventory";
+import { currentMetadata } from "../src/core/metadata";
 import type { ConsolidationPreview } from "../src/git/consolidation";
 import { createMigrationEngine } from "../src/maintenance/engine";
 import { maintenanceStorage } from "../src/platform/consolidation";
@@ -9,9 +11,16 @@ vi.mock("obsidian", () => ({ Platform: { isDesktopApp: false } }));
 function fixture() {
   const files = new Map<string, string>();
   const folders = new Set<string>();
+  const binary = new Map<string, Uint8Array>();
+  const writeBinary = vi.fn(async (path: string, bytes: ArrayBuffer) => {
+    binary.set(path, new Uint8Array(bytes));
+  });
+  const readBinary = vi.fn(async (path: string) => binary.get(path)?.slice().buffer);
   let fail = false;
   const adapter = {
-    exists: async (path: string) => files.has(path) || folders.has(path),
+    exists: async (path: string) => files.has(path) || folders.has(path) || binary.has(path),
+    writeBinary,
+    readBinary,
     mkdir: async (path: string) => {
       folders.add(path);
     },
@@ -38,6 +47,9 @@ function fixture() {
   const directory = ".obsidian/plugins/gitbin/local/test";
   return {
     files,
+    binary,
+    writeBinary,
+    readBinary,
     directory,
     storage: () => maintenanceStorage(app, directory),
     fail: (value: boolean) => {
@@ -45,6 +57,61 @@ function fixture() {
     },
   };
 }
+it("loads referenced recovery and history objects once without reading unrelated cache files", async () => {
+  const f = fixture();
+  const bytes = new Uint8Array([1, 2, 3]);
+  const content = objectReference(bytes);
+  f.binary.set(f.directory + "/objects/" + content.hash, bytes);
+  f.binary.set(f.directory + "/objects/" + "a".repeat(40), new Uint8Array([99]));
+  f.files.set(
+    f.directory + "/journal.json",
+    JSON.stringify({
+      metadata: currentMetadata(),
+      vaultRoot: "personal",
+      revision: null,
+      entries: [],
+      intents: [
+        {
+          id: "interrupted",
+          path: "Note.md",
+          before: content,
+          after: content,
+          baselineState: null,
+          available: true,
+        },
+      ],
+      history: {
+        checkpoint: [
+          { id: "history", path: "Note.md", text: null, binary: true, hash: content.hash, content },
+        ],
+        entries: [],
+      },
+    }),
+  );
+  const snapshot = await Effect.runPromise(f.storage().loadDevice());
+  expect(f.readBinary.mock.calls.map(([path]) => path)).toEqual([
+    f.directory + "/objects/" + content.hash,
+  ]);
+  expect(snapshot).not.toBeNull();
+  expect([...(snapshot?.files.keys() ?? [])]).toEqual(["journal.json", "objects/" + content.hash]);
+  expect(f.binary.size).toBe(2);
+});
+it("reuses valid cached objects and repairs a corrupt cached copy before staging", async () => {
+  const f = fixture();
+  const p = await preview(f);
+  const bytes = new Uint8Array([1, 2, 3]);
+  const path = "objects/" + objectReference(bytes).hash;
+  if (!p.device) throw new Error("Missing device");
+  const device = { ...p.device, files: new Map(p.device.files).set(path, bytes) };
+  f.binary.set(f.directory + "/" + path, bytes);
+  await Effect.runPromise(f.storage().stage({ ...p, device }));
+  expect(f.writeBinary).not.toHaveBeenCalled();
+  await Effect.runPromise(f.storage().discardStale());
+  f.binary.set(f.directory + "/" + path, new Uint8Array([0]));
+  await Effect.runPromise(f.storage().stage({ ...p, device }));
+  expect(f.writeBinary).toHaveBeenCalledTimes(1);
+  expect(f.binary.get(f.directory + "/" + path)).toEqual(bytes);
+});
 async function preview(f: ReturnType<typeof fixture>): Promise<ConsolidationPreview> {
   const original = JSON.stringify({ vaultRoot: "personal", files: [], intents: [] });
   f.files.set(f.directory + "/journal.json", original);

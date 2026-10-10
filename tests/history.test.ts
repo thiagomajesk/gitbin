@@ -48,13 +48,13 @@ describe("local sync history", () => {
       result: { path: "Renamed.md", text: "Edited" },
     });
   });
-  it("keeps at most 100 sync entries", () => {
+  it("retains sync entries beyond the former 100-entry cutoff", () => {
     let state = emptyHistory();
     for (let index = 0; index < 110; index++) {
       const next = file(String(index));
       state = recordHistory(state, [next], state.checkpoint ?? [], [next], String(index));
     }
-    expect(state.entries).toHaveLength(100);
+    expect(state.entries).toHaveLength(110);
     expect(state.entries[0]?.revision).toBe("109");
   });
   it("retains complete large comparisons including changes beyond the former cutoff", () => {
@@ -92,13 +92,14 @@ describe("local sync history", () => {
       expect(change.result.text).toBe("x".repeat(8000) + " changed");
     }
   });
-  it("bounds total retained preview data as well as entry count", () => {
+  it("retains history beyond the former total preview byte cutoff", () => {
     let state = emptyHistory();
     for (let index = 0; index < 20; index++) {
-      const next = file(String(index) + "x".repeat(32000));
+      const next = file(String(index) + "x".repeat(40000));
       state = recordHistory(state, [next], state.checkpoint ?? [], [next], String(index));
     }
-    expect(JSON.stringify(state.entries).length).toBeLessThanOrEqual(2_500_000);
+    expect(JSON.stringify(state.entries).length).toBeGreaterThan(2_500_000);
+    expect(state.entries).toHaveLength(20);
     expect(state.entries[0]?.revision).toBe("19");
   });
 });

@@ -138,9 +138,9 @@ async function assertMissingMain(
   const missingMain = await reopened.fetch();
   expect(missingMain.revision).toBeNull();
   expect(missingMain.hasBranches).toBe(true);
-  const remote = createGitRemote(connection);
+  const remote = await Effect.runPromise(createGitRemote(connection));
   await expect(
-    Effect.runPromise(remote.read({ root: "Personal", name: "Personal" })),
+    Effect.runPromise(remote.catalog.read({ root: "Personal", name: "Personal" })),
   ).rejects.toThrow("no main");
   git(remotePath, ["update-ref", "-d", "refs/heads/unrelated"]);
   const empty = await reopened.fetch();

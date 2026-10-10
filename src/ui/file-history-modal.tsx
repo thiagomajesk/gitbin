@@ -1,6 +1,7 @@
 import { type App, Modal } from "obsidian";
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { FileChange } from "../core/history";
 import { FileHistory } from "./file-history";
 import type { HistorySelection } from "./sync-history";
 
@@ -9,6 +10,9 @@ export class FileHistoryModal extends Modal {
   constructor(
     app: App,
     private readonly historySelection: HistorySelection,
+    private readonly load?: (change: FileChange) => Promise<FileChange>,
+    private readonly onDemand = false,
+    private readonly cached?: (change: FileChange) => Promise<boolean>,
   ) {
     super(app);
   }
@@ -22,6 +26,9 @@ export class FileHistoryModal extends Modal {
     this.root.render(
       createElement(FileHistory, {
         selection: this.historySelection,
+        load: this.load,
+        onDemand: this.onDemand,
+        cached: this.cached,
       }),
     );
   }

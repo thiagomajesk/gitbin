@@ -4,11 +4,27 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import type { Authentication } from "../src/auth/credentials";
 import { type Config, defaults, type SyncPreferences } from "../src/core/config";
+import { issueValue } from "../src/ui/issue-values";
 import { SetupForm } from "../src/ui/setup-form";
 import type { RepositoryInspection } from "../src/ui/setup-types";
 import { createUiStore } from "../src/ui/store";
 
 afterEach(cleanup);
+
+it("lets the whole sync switch toggle while a migration is pending", async () => {
+  const actions = setup();
+  actions.store.update({
+    config: { ...defaults(), setupComplete: true, autoSync: false },
+    error: "Pending migrations",
+    issue: { kind: "migration-required", ...issueValue("migration-required", null) },
+  });
+  render(<SetupForm actions={actions} />);
+  const toggle = screen.getByRole<HTMLInputElement>("switch", { name: "Sync automatically" });
+  expect(toggle.disabled).toBe(false);
+  await userEvent.setup().click(toggle.parentElement as HTMLElement);
+  expect(actions.store.getSnapshot().config.autoSync).toBe(true);
+  expect(screen.getByText("Migration required")).toBeTruthy();
+});
 vi.mock("obsidian", () => ({ setTooltip: vi.fn() }));
 function setup(vaults: RepositoryInspection["vaults"] = []) {
   const config = defaults();
@@ -358,8 +374,84 @@ it("saves automatic sync preferences and disables delay controls in manual mode"
   expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sync now" }).disabled).toBe(false);
   expect([...document.querySelectorAll("h3")].map((h) => h.textContent)).toEqual([
     "Repository",
-    "Automatic sync",
+    "Sync and downloads",
     "Sync status",
     "Maintenance",
   ]);
+});
+it("offers storage presets and keeps the selection while on-demand downloads is off", async () => {
+  const actions = setup();
+  const user = userEvent.setup();
+  render(<SetupForm actions={actions} />);
+  const select = screen.getByRole<HTMLSelectElement>("combobox", { name: "Local storage limit" });
+  expect([...select.options].map((option) => option.text)).toEqual([
+    "50 MB",
+    "100 MB",
+    "500 MB",
+    "1024 MB",
+    "Unlimited",
+  ]);
+  for (const value of ["50", "500", "1024", "unlimited", "100"]) {
+    await user.selectOptions(select, value);
+    expect(actions.store.getSnapshot().config.storageMegabytes).toBe(
+      value === "unlimited" ? value : Number(value),
+    );
+  }
+  await user.click(screen.getByRole("switch", { name: "On-demand downloads" }));
+  expect(
+    screen.getByRole<HTMLSelectElement>("combobox", { name: "Local storage limit" }).disabled,
+  ).toBe(true);
+});
+
+it("caps download choices after storage and lowers the saved maximum with storage", async () => {
+  const actions = setup();
+  const user = userEvent.setup();
+  render(<SetupForm actions={actions} />);
+  const storage = screen.getByRole<HTMLSelectElement>("combobox", { name: "Local storage limit" });
+  const download = screen.getByRole<HTMLSelectElement>("combobox", { name: "Max download size" });
+  expect(download.value).toBe("25");
+  expect([...download.options].map((option) => option.text)).toEqual([
+    "5 MB",
+    "10 MB",
+    "25 MB",
+    "50 MB",
+    "100 MB",
+  ]);
+  expect(storage.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await user.selectOptions(download, "100");
+  await user.selectOptions(storage, "50");
+  expect(download.value).toBe("50");
+  expect(actions.store.getSnapshot().config.maxDownloadMegabytes).toBe(50);
+  expect([...download.options].map((option) => option.value)).not.toContain("100");
+  await user.selectOptions(storage, "unlimited");
+  expect(download.value).toBe("50");
+  await user.selectOptions(download, "100");
+  expect(actions.store.getSnapshot().config.maxDownloadMegabytes).toBe(100);
+});
+
+it("offers unlimited downloads with unlimited storage and caps them when storage is lowered", async () => {
+  const actions = setup();
+  const user = userEvent.setup();
+  render(<SetupForm actions={actions} />);
+  const storage = screen.getByRole<HTMLSelectElement>("combobox", { name: "Local storage limit" });
+  const download = screen.getByRole<HTMLSelectElement>("combobox", { name: "Max download size" });
+  expect([...download.options].map((option) => option.value)).not.toContain("unlimited");
+  await user.selectOptions(storage, "unlimited");
+  await user.selectOptions(download, "unlimited");
+  expect(actions.store.getSnapshot().config.maxDownloadMegabytes).toBe("unlimited");
+  await user.selectOptions(storage, "500");
+  expect(download.value).toBe("500");
+  expect(actions.store.getSnapshot().config.maxDownloadMegabytes).toBe(500);
+});
+
+it("allows unlimited downloads when the storage setting is inactive", async () => {
+  const actions = setup();
+  const user = userEvent.setup();
+  render(<SetupForm actions={actions} />);
+  await user.click(screen.getByRole("switch", { name: "On-demand downloads" }));
+  const download = screen.getByRole<HTMLSelectElement>("combobox", { name: "Max download size" });
+  await user.selectOptions(download, "unlimited");
+  expect(download.value).toBe("unlimited");
+  await user.click(screen.getByRole("switch", { name: "On-demand downloads" }));
+  expect(download.value).toBe("100");
 });

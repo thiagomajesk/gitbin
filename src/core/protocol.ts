@@ -1,7 +1,6 @@
 import { Effect, Schema } from "effect";
 import { BlobId, StoredContent } from "./blobs";
 import { CheckpointFile } from "./checkpoint";
-import type { FileContent } from "./content";
 import { SyncError } from "./errors";
 import { Metadata } from "./metadata";
 
@@ -25,11 +24,6 @@ const StoredFile = Schema.Struct({
   baselineState: Schema.NullOr(Schema.String),
 });
 export type StoredFile = typeof StoredFile.Type;
-export interface WriteIntent {
-  readonly path: string;
-  readonly before: FileContent | null;
-  readonly after: FileContent | null;
-}
 const StoredIntent = Schema.Struct({
   path: Schema.String,
   before: Schema.NullOr(StoredContent),
@@ -61,7 +55,6 @@ export const decode = <A>(schema: Schema.Codec<A>, input: unknown): Effect.Effec
 export function validPath(path: string): boolean {
   return (
     path.length > 0 &&
-    path.length <= 1000 &&
     !Array.from(path).some((char) => char.charCodeAt(0) < 32) &&
     !/[\\:*?"<>|]/.test(path) &&
     path

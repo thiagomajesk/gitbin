@@ -1,5 +1,5 @@
-import { Context, Effect, Exit, Layer, Scope } from "effect";
-import { Notice, Plugin } from "obsidian";
+import { Effect, Exit, Scope } from "effect";
+import { Notice, Plugin, TFile } from "obsidian";
 import {
   type Authentication,
   readCredentials,
@@ -7,35 +7,27 @@ import {
   storeCredentials,
 } from "./auth/credentials";
 import { type Config, defaults, loadConfig, type SyncPreferences } from "./core/config";
-import { connectionChanged } from "./core/decisions";
-import type { SyncEngine } from "./core/engine";
+import { connectionChanged, schedulingChanged } from "./core/decisions";
 import { attempt, explain, io, retryable, SyncError } from "./core/errors";
 import { hashText } from "./core/hash";
-import type { GitRemote } from "./core/ports";
-import {
-  checkRoot,
-  decode,
-  Registration,
-  type Registration as VaultRegistration,
-} from "./core/protocol";
-import {
-  GitRemoteService,
-  LocalVaultService,
-  SyncEngineService,
-  syncEngineLayer,
-} from "./core/services";
+import { checkRoot, decode, Registration } from "./core/protocol";
+import { createSelectiveEngine, type SelectiveEngine } from "./core/selective-engine";
+import type { InventorySnapshot } from "./core/selective-ports";
 import { checkRemote, createGitRemote } from "./git/remote";
+import { createSelectiveRemote } from "./git/selective";
 import { commitAuthor, deviceName } from "./platform/device";
+import { deviceLimits } from "./platform/device-limits";
 import { gitCache } from "./platform/git-cache";
 import { obsidianFetch } from "./platform/http";
+import { LazyEditor } from "./platform/lazy-editor";
 import { createRetryLoop, type Outcome } from "./platform/retry";
+import { SelectiveObsidianVault } from "./platform/selective-vault";
 import {
   automaticSyncReady,
   backgroundReady,
   captureReady,
   syncOutcome,
 } from "./platform/sync-decisions";
-import { ObsidianVault } from "./platform/vault";
 import { HistoryView, historyType } from "./ui/history-view";
 import { GitbinSettings } from "./ui/settings";
 import type { RepositoryInspection } from "./ui/setup-types";
@@ -43,9 +35,11 @@ import { createUiStore } from "./ui/store";
 import "./styles.css";
 import { readSetupCode } from "./auth/setup-code";
 import { exportSetup } from "./auth/setup-transfer";
+import type { FileChange } from "./core/history";
 import { maintenanceStorage } from "./platform/consolidation";
 import { pluginActions } from "./ui/actions";
 import { ConsolidationModal } from "./ui/consolidation-modal";
+import { warningNotice } from "./ui/notice";
 import { SetupImportModal, SetupQrModal } from "./ui/setup-transfer-modal";
 import { syncIssue } from "./ui/sync-issue";
 
@@ -68,11 +62,15 @@ export default class GitbinPlugin extends Plugin {
     this.retryScope,
   );
   private lastFailure: unknown;
-  private engine: SyncEngine | undefined;
-  private engineScope: Scope.Closeable | undefined;
+  private engine: SelectiveEngine | undefined;
+  private readonly lazyEditor = new LazyEditor(this, {
+    status: (path) => this.editorStatus(path),
+    download: (path) => this.downloadFile(path),
+  });
   private queue: Promise<unknown> = Promise.resolve();
   private uploadTimer: number | undefined;
   private captureTimer: number | undefined;
+  private capturePaths: Set<string> | undefined = new Set();
   private stopped = false;
   private syncing = false;
   private attached = false;
@@ -85,6 +83,7 @@ export default class GitbinPlugin extends Plugin {
   override async onload(): Promise<void> {
     const raw: unknown = await this.loadData();
     this.config = loadConfig(raw);
+    this.lazyEditor.install();
     this.registerObsidianProtocolHandler("gitbin-setup", (params) => {
       this.app.workspace.onLayoutReady(() => {
         try {
@@ -96,7 +95,7 @@ export default class GitbinPlugin extends Plugin {
           });
           this.transferModal.open();
         } catch (cause) {
-          new Notice(explain(cause));
+          warningNotice(explain(cause));
         }
       });
     });
@@ -111,6 +110,7 @@ export default class GitbinPlugin extends Plugin {
     });
     this.app.workspace.onLayoutReady(() => {
       this.layoutReady = true;
+      void this.restoreSync();
     });
     this.registerView(historyType, (leaf) => new HistoryView(leaf, this));
     this.registerDomEvent(window, "online", () => this.resumeSync());
@@ -134,9 +134,17 @@ export default class GitbinPlugin extends Plugin {
       callback: () => this.requestSync(),
     });
     this.addCommand({ id: "open", name: "Open sync history", callback: () => this.openHistory() });
-    this.registerEvent(this.app.vault.on("modify", () => this.scheduleCapture()));
-    this.registerEvent(this.app.vault.on("create", () => this.scheduleCapture()));
-    this.registerEvent(this.app.vault.on("delete", () => this.scheduleCapture()));
+    this.registerEvent(this.app.vault.on("modify", (file) => this.scheduleCapture(file.path)));
+    this.registerEvent(
+      this.app.vault.on("create", (file) =>
+        this.scheduleCapture(file instanceof TFile ? file.path : undefined),
+      ),
+    );
+    this.registerEvent(
+      this.app.vault.on("delete", (file) =>
+        this.scheduleCapture(file instanceof TFile ? file.path : undefined),
+      ),
+    );
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
         if (this.attached) {
@@ -147,7 +155,6 @@ export default class GitbinPlugin extends Plugin {
         this.scheduleCapture();
       }),
     );
-    await this.restoreSync();
   }
   private resumeSync(): void {
     if (this.config.setupComplete && this.config.autoSync)
@@ -253,7 +260,7 @@ export default class GitbinPlugin extends Plugin {
       });
       this.transferModal.open();
     } catch (cause) {
-      new Notice(cause instanceof Error ? cause.message : "Cannot generate this setup code.");
+      warningNotice(cause instanceof Error ? cause.message : "Cannot generate this setup code.");
     }
   }
   openHistory(): void {
@@ -286,17 +293,22 @@ export default class GitbinPlugin extends Plugin {
     );
   }
 
-  private inspectStatus = Effect.fn("plugin.inspectStatus")(function* (this: GitbinPlugin) {
-    const remote = yield* this.remote(this.config);
-    const vaults = yield* remote.inspect(
-      { root: this.config.root, name: this.app.vault.getName() },
-      this.config.lastRevision,
-    );
+  private cacheStatus(snapshot: InventorySnapshot | null): void {
+    if (!snapshot) {
+      this.ui.update({ stale: true });
+      return;
+    }
+    const vaults = snapshot.vaults.map((vault) => ({
+      vault,
+      latest: snapshot.revision,
+      applied: vault.root === this.config.root ? snapshot.revision : null,
+      changed: vault.root === this.config.root ? false : null,
+      connected: vault.root === this.config.root,
+    }));
     const checkedAt = Date.now();
     this.config = { ...this.config, vaults, checkedAt };
-    yield* io("Cannot cache vault status.", () => this.saveData(this.config));
     this.ui.update({ config: this.config, vaults, checkedAt, stale: false });
-  });
+  }
 
   private requestSync(): void {
     if (this.config.setupComplete) {
@@ -323,11 +335,12 @@ export default class GitbinPlugin extends Plugin {
     };
     return this.enqueue(() =>
       Effect.gen({ self: this }, function* () {
-        yield* attempt("Invalid settings.", () => loadConfig(next));
+        next = yield* attempt("Invalid settings.", () => loadConfig(next));
         yield* attempt("Check the repository and vault folder.", () => {
           this.checkConnection(next);
         });
         const changed = connectionChanged(next, this.config);
+        const restart = changed || schedulingChanged(this.config, next);
         if (changed)
           next = {
             ...next,
@@ -354,7 +367,7 @@ export default class GitbinPlugin extends Plugin {
         }
         this.config = next;
         this.ui.update({ config: this.config, error: null });
-        this.restartSyncScheduling();
+        if (restart) this.restartSyncScheduling();
       }),
     );
   }
@@ -371,33 +384,61 @@ export default class GitbinPlugin extends Plugin {
     if (!checkRoot(next.root)) throw new Error("Choose a portable vault folder.");
   }
   private closeEngine = Effect.fn("plugin.closeEngine")(function* (this: GitbinPlugin) {
-    if (this.engineScope) yield* Scope.close(this.engineScope, Exit.void);
-    this.engineScope = undefined;
+    this.engine?.close();
     this.engine = undefined;
+    yield* Effect.void;
   });
 
-  private buildEngine = Effect.fn("plugin.buildEngine")(function* (
-    this: GitbinPlugin,
-    vault: VaultRegistration,
-    local: ObsidianVault,
-    remote: GitRemote,
-  ) {
-    const scope = yield* Scope.make();
-    const layer = syncEngineLayer(vault).pipe(
-      Layer.provide(
-        Layer.merge(
-          Layer.succeed(LocalVaultService, local),
-          Layer.succeed(GitRemoteService, remote),
-        ),
-      ),
+  private downloadFile(path: string): Promise<boolean> {
+    return this.enqueue(
+      () =>
+        Effect.gen({ self: this }, function* () {
+          const engine = yield* this.openEngine();
+          yield* engine.download(path);
+        }),
+      (error) => this.reportFailure(error, !this.lazyEditor.showsDownload(path)),
     );
-    const context = yield* Layer.buildWithScope(layer, scope).pipe(
-      Effect.onError(() => Scope.close(scope, Exit.void)),
+  }
+  async loadHistoryChange(change: FileChange): Promise<FileChange> {
+    let loaded: FileChange | undefined;
+    let failure: unknown;
+    await this.enqueue(
+      () =>
+        Effect.gen({ self: this }, function* () {
+          const engine = yield* this.openEngine();
+          loaded = yield* engine.historyChange(change, () => navigator.onLine);
+        }),
+      (error) => {
+        failure = error;
+        warningNotice(explain(error));
+      },
     );
-    return { engine: Context.get(context, SyncEngineService), scope };
-  });
+    if (!loaded)
+      throw new Error(
+        failure
+          ? explain(failure)
+          : "This historical content is unavailable. It may have been removed by consolidation.",
+      );
+    return loaded;
+  }
 
-  private enqueue(task: () => Effect.Effect<unknown, SyncError>): Promise<boolean> {
+  async historyCached(change: FileChange): Promise<boolean> {
+    let cached = false;
+    await this.enqueue(
+      () =>
+        Effect.gen({ self: this }, function* () {
+          const engine = yield* this.openEngine();
+          cached = yield* engine.historyCached(change);
+        }),
+      () => {},
+    );
+    return cached;
+  }
+
+  private enqueue(
+    task: () => Effect.Effect<unknown, SyncError>,
+    report: (error: unknown) => void = (error) => this.reportFailure(error),
+  ): Promise<boolean> {
     const run = this.queue
       .then(async () => {
         if (this.stopped) return false;
@@ -406,7 +447,7 @@ export default class GitbinPlugin extends Plugin {
             Effect.match({
               onSuccess: () => true,
               onFailure: (error) => {
-                this.reportFailure(error);
+                report(error);
                 return false;
               },
             }),
@@ -414,27 +455,41 @@ export default class GitbinPlugin extends Plugin {
         );
       })
       .catch((error: unknown) => {
-        this.reportFailure(error);
+        report(error);
         return false;
       });
     this.queue = run;
     return run;
   }
 
-  private reportFailure(error: unknown): void {
+  private reportFailure(error: unknown, notify = true): void {
     this.lastFailure = error;
     this.ui.update({ stale: true });
     this.setStatus("Needs attention");
     const issue = syncIssue(error);
     this.ui.update({ error: explain(error), issue });
-    if (!issue && !retryable(error)) new Notice(explain(error), 10000);
+    this.lazyEditor.refresh();
+    if (notify && !issue && !retryable(error)) warningNotice(explain(error));
+  }
+  private editorStatus(path: string): string | null {
+    if (this.engine) return this.engine.status(path);
+    if (!this.config.setupComplete) return null;
+    if (this.ui.getSnapshot().issue?.kind === "migration-required") return null;
+    return this.ui.getSnapshot().error ?? "Restoring download availability…";
+  }
+
+  private refreshDownloads(): void {
+    this.lazyEditor.refresh();
+    if (!this.engine) return;
+    const details = this.engine.details();
+    this.ui.update({ downloads: { used: details.used } });
   }
 
   private storage(config: Config): string {
     const key = hashText(config.remote + "\n" + config.root).slice(0, 24);
     return this.app.vault.configDir + "/plugins/" + this.manifest.id + "/local/" + key;
   }
-  private remote = Effect.fn("plugin.remote")(function* (
+  private connection = Effect.fn("plugin.connection")(function* (
     this: GitbinPlugin,
     config: Config,
     authentication?: Authentication,
@@ -442,25 +497,30 @@ export default class GitbinPlugin extends Plugin {
     const device = yield* io("Cannot identify this device.", () =>
       deviceName(this.app.secretStorage),
     );
-    return yield* attempt("Check the HTTPS repository URL.", () =>
-      createGitRemote({
-        fs: gitCache(this.app.vault.adapter, this.storage(config) + "/git"),
-        identity: {
-          author: commitAuthor(config, device),
-          device,
-        },
-        network: { fetch: obsidianFetch, allowed: [new URL(config.remote).origin] },
-        url: config.remote,
-        credentials: scopedCredentials(
-          config.remote,
-          authentication
-            ? authentication.credentials
-            : readCredentials(
-                config.secretId ? this.app.secretStorage.getSecret(config.secretId) : null,
-              ),
-        ),
-      }),
-    );
+    return yield* attempt("Check the HTTPS repository URL.", () => ({
+      fs: gitCache(this.app.vault.adapter, this.storage(config) + "/git"),
+      identity: {
+        author: commitAuthor(config, device),
+        device,
+      },
+      network: { fetch: obsidianFetch, allowed: [new URL(config.remote).origin] },
+      url: config.remote,
+      credentials: scopedCredentials(
+        config.remote,
+        authentication
+          ? authentication.credentials
+          : readCredentials(
+              config.secretId ? this.app.secretStorage.getSecret(config.secretId) : null,
+            ),
+      ),
+    }));
+  });
+  private remote = Effect.fn("plugin.remote")(function* (
+    this: GitbinPlugin,
+    config: Config,
+    authentication?: Authentication,
+  ) {
+    return yield* createGitRemote(yield* this.connection(config, authentication));
   });
   private openEngine = Effect.fn("plugin.openEngine")(function* (this: GitbinPlugin) {
     if (this.engine) return this.engine;
@@ -474,13 +534,22 @@ export default class GitbinPlugin extends Plugin {
       name: this.app.vault.getName(),
       root: this.config.root,
     });
-    const remote = yield* this.remote(this.config);
-    const local = new ObsidianVault(this.app, this.storage(this.config));
+    const connection = yield* this.connection(this.config);
+    const remote = createSelectiveRemote(connection);
+    const local = new SelectiveObsidianVault(
+      this.app,
+      this.storage(this.config),
+      (path) => this.lazyEditor.active(path),
+      () => this.refreshDownloads(),
+      (path, text) => this.lazyEditor.expect(path, text),
+    );
     const attached = yield* io("Cannot inspect local registration.", () =>
       this.app.vault.adapter.exists(this.storage(this.config) + "/journal.json"),
     );
-    const { engine, scope } = yield* this.buildEngine(registration, local, remote);
-    this.engineScope = scope;
+    const engine = createSelectiveEngine(registration, local, remote, () =>
+      deviceLimits(this.config),
+    );
+    yield* engine.open();
     this.attached = attached;
     this.engine = engine;
     this.ui.update({ history: engine.history(), historyWarning: null });
@@ -522,7 +591,7 @@ export default class GitbinPlugin extends Plugin {
           username: connection.credentials?.username ?? "",
         };
         const remote = yield* this.remote(config, connection);
-        const snapshot = yield* remote.read({
+        const snapshot = yield* remote.catalog.read({
           root: config.root,
           name: this.app.vault.getName(),
         });
@@ -596,20 +665,13 @@ export default class GitbinPlugin extends Plugin {
             ...this.config,
             lastRevision: result.revision,
             lastSync: Date.now(),
-            pending: false,
+            pending: result.pending,
           };
+          this.cacheStatus(result.snapshot);
           yield* io("Cannot save the sync checkpoint.", () => this.saveData(this.config));
-          this.ui.update({ pending: false });
-          yield* this.inspectStatus().pipe(
-            Effect.catch((error) =>
-              Effect.sync(() => {
-                this.lastFailure = error;
-                this.ui.update({ stale: true });
-              }),
-            ),
-          );
+          this.ui.update({ pending: result.pending });
         }
-        this.setStatus("Synced");
+        this.setStatus(result.pending ? "Some changes remain on this device" : "Synced");
       }).pipe(
         Effect.ensuring(
           Effect.sync(() => {
@@ -630,22 +692,38 @@ export default class GitbinPlugin extends Plugin {
     this.setStatus("Changes saved locally");
     this.ui.update({ pending: true });
   });
-  private captureEdits = Effect.fn("plugin.captureEdits")(function* (this: GitbinPlugin) {
+  private captureEdits = Effect.fn("plugin.captureEdits")(function* (
+    this: GitbinPlugin,
+    paths?: ReadonlySet<string>,
+  ) {
     if (!this.engine) return;
-    const changed = yield* this.engine.capture();
+    const changed = yield* this.engine.capture(paths);
     yield* this.savePending(changed);
+    this.ui.update({ pending: this.config.pending });
+    return changed;
   });
   private captureReady(): boolean {
     return captureReady(this.layoutReady, this.attached, this.engine !== undefined);
   }
 
-  private scheduleCapture(): void {
+  private scheduleCapture(path?: string): void {
     if (this.stopped || !this.captureReady()) return;
+    if (path === undefined) this.capturePaths = undefined;
+    else this.capturePaths?.add(path);
     this.ui.update({ pending: true });
-    this.scheduleUpload();
     window.clearTimeout(this.captureTimer);
     this.captureTimer = window.setTimeout(() => {
-      void this.enqueue(() => this.captureEdits());
+      const paths = this.capturePaths;
+      this.capturePaths = new Set();
+      void this.enqueue(() =>
+        this.captureEdits(paths).pipe(
+          Effect.tap((changed) =>
+            Effect.sync(() => {
+              if (changed) this.scheduleUpload();
+            }),
+          ),
+        ),
+      );
     }, 500);
   }
 

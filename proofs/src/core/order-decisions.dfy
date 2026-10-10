@@ -10,34 +10,6 @@ predicate JSStringLt(s: string, t: string)
   else JSStringLt(s[1..], t[1..])
 }
 
-function descendingId(left: string, right: string): int
-{
-  if JSStringLt(left, right) then
-    1
-  else
-    if JSStringLt(right, left) then
-      -1
-    else
-      0
-}
-
-lemma StringOrderAsymmetric(left: string, right: string)
-  ensures JSStringLt(left, right) ==> !JSStringLt(right, left)
-  decreases |left|
-{
-  if |left| > 0 && |right| > 0 && left[0] == right[0] {
-    StringOrderAsymmetric(left[1..], right[1..]);
-  }
-}
-
-lemma descendingId_ensures(left: string, right: string)
-  ensures (JSStringLt(left, right) ==> (descendingId(left, right) == 1))
-  ensures (JSStringLt(right, left) ==> (descendingId(left, right) == -1))
-  ensures ((left == right) ==> (descendingId(left, right) == 0))
-{
-  StringOrderAsymmetric(right, left);
-}
-
 function historyLocationOrder(left: string, right: string): int
 {
   if JSStringLt(left, right) then

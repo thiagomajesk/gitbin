@@ -1,16 +1,17 @@
 import { expect, it, vi } from "@effect/vitest";
 import { Cause, Effect, Exit, Schema } from "effect";
 import * as Y from "yjs";
+import { AvailabilityJournal } from "../src/core/availability";
 import { BinaryObjects, blobId } from "../src/core/blobs";
-import { binaryContent, contentHash, encodeBytes } from "../src/core/content";
-import { createSyncEngine } from "../src/core/engine";
+import { binaryContent, contentBytes, contentHash, encodeBytes } from "../src/core/content";
 import { attempt } from "../src/core/errors";
 import { FileDocument } from "../src/core/file";
 import { currentMetadata, metadataPath, migrationIds } from "../src/core/metadata";
-import { Journal } from "../src/core/protocol";
+import { createSelectiveEngine } from "../src/core/selective-engine";
+
 import { createMigrationEngine, storageMigrations } from "../src/maintenance/engine";
 import type { MigrationSnapshot, StorageMigration } from "../src/maintenance/types";
-import { MemoryVault } from "./helpers";
+import { SelectiveDevice, SelectiveRepository, selectiveLimits } from "./selective-fixture";
 
 function required<T>(value: T | null | undefined): T {
   if (value == null) throw new Error("Missing fixture value");
@@ -93,30 +94,29 @@ it.effect(
         files: new Map([["journal.json", new TextEncoder().encode(JSON.stringify(original))]]),
       };
       const result = yield* createMigrationEngine().prepare(source.repository, device);
-      const journal = Schema.decodeUnknownSync(Journal)(
+      const journal = Schema.decodeUnknownSync(AvailabilityJournal)(
         JSON.parse(new TextDecoder().decode(required(result.device).files.get("journal.json"))),
       );
       expect(journal.metadata.consolidationHash).toBeNull();
-      const local = new MemoryVault();
+      const local = new SelectiveDevice();
       local.journal = journal;
-      local.files.set("File.bin", source.content);
-      for (const id of journal.blobs)
-        local.blobs.set(
-          id,
-          binaryContent(required(required(result.device).files.get("blobs/" + id))),
-        );
+      local.files.set("File.bin", contentBytes(source.content));
+      for (const [path, bytes] of required(result.device).files)
+        if (path.startsWith("objects/")) local.cache.set(path.slice(8), bytes);
       const engine = yield* Effect.acquireRelease(
         Effect.sync(() =>
-          createSyncEngine({ name: "Personal", root: "personal" }, local, {
-            read: () => Effect.die("Unexpected network"),
-            publish: () => Effect.die("Unexpected publication"),
-          }),
+          createSelectiveEngine(
+            { name: "Personal", root: "personal" },
+            local,
+            new SelectiveRepository(),
+            () => selectiveLimits,
+          ),
         ),
         (value) => Effect.sync(() => value.close()),
       );
       yield* engine.open();
       yield* engine.capture();
-      expect(local.files.get("File.bin")).toEqual(changed);
+      expect(local.files.get("File.bin")).toEqual(contentBytes(changed));
       expect(local.journal?.intents).toEqual([]);
     }),
 );
@@ -250,13 +250,8 @@ it.effect("isolates inspection and validation mutations from the source and resu
 it.effect("upgrades the previous binary-reference metadata without re-transforming content", () =>
   Effect.gen(function* () {
     const source = yield* legacyFixture();
-    const first = yield* createMigrationEngine().prepare(source.repository);
-    const files = new Map(first.repository.files);
-    files.delete(metadataPath);
-    const attachmentPath = ".gitbin/vaults/personal/attachments/" + source.id + ".bin";
-    files.set(source.path, required(files.get(attachmentPath)));
-    files.delete(attachmentPath);
-    files.set(".gitbin/blobs/personal/" + blobId(source.content), new Uint8Array([0, 1, 255]));
+    const first = yield* required(storageMigrations[0]).transform(source.repository);
+    const files = new Map(first.files);
     files.set(".gitbin/format", new TextEncoder().encode("2\n"));
     files.set(".gitbin/generation", new TextEncoder().encode(crypto.randomUUID()));
     const transform = vi.fn(required(storageMigrations[0]).transform);
@@ -266,9 +261,7 @@ it.effect("upgrades the previous binary-reference metadata without re-transformi
     ];
     const result = yield* createMigrationEngine(registry).prepare({ kind: "repository", files });
     expect(transform).not.toHaveBeenCalled();
-    expect(result.repository.files.get(source.path)).toEqual(
-      first.repository.files.get(source.path),
-    );
+    expect(result.repository.files.get("personal/File.bin")).toEqual(new Uint8Array([0, 1, 255]));
     expect(result.repository.files.has(".gitbin/format")).toBe(false);
     expect(result.repository.files.has(".gitbin/generation")).toBe(false);
     expect(metadata(result.repository)).toEqual(currentMetadata(result.consolidationHash));
@@ -302,28 +295,28 @@ it.effect("migrates a previous device journal without losing offline baselines o
         ],
       ]),
     };
-    const first = yield* createMigrationEngine().prepare(source.repository, device);
-    const files = new Map(required(first.device).files);
-    const current = Schema.decodeUnknownSync(Journal)(
+    const first = yield* required(storageMigrations[0]).transform(device);
+    const files = new Map(first.files);
+    const data = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown))(
       JSON.parse(new TextDecoder().decode(files.get("journal.json"))),
     );
-    const { metadata: _metadata, ...data } = current;
     files.set(
       "journal.json",
       new TextEncoder().encode(
         JSON.stringify({ ...data, version: 2, generation: crypto.randomUUID() }),
       ),
     );
-    const result = yield* createMigrationEngine().prepare(first.repository, {
+    const result = yield* createMigrationEngine().prepare(source.repository, {
       kind: "device",
       files,
     });
-    const journal = Schema.decodeUnknownSync(Journal)(
+    const journal = Schema.decodeUnknownSync(AvailabilityJournal)(
       JSON.parse(new TextDecoder().decode(required(result.device).files.get("journal.json"))),
     );
-    expect(journal.files).toEqual(current.files);
+    expect(journal.entries[0]?.localPath).toBe("File.bin");
+    expect(journal.entries[0]?.available).toBe(true);
     expect(journal.metadata).toEqual(currentMetadata());
-    expect(required(result.device).files.get("blobs/" + blobId(source.content))).toEqual(
+    expect(required(result.device).files.get("objects/" + blobId(source.content))).toEqual(
       new Uint8Array([0, 1, 255]),
     );
     expect(files.get("journal.json")).not.toEqual(

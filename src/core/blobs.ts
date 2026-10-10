@@ -52,11 +52,6 @@ export class BinaryObjects {
     }
   }
 
-  retainOnly(ids: readonly string[]): void {
-    const required = new Set(ids);
-    for (const id of this.objects.keys()) if (!required.has(id)) this.objects.delete(id);
-  }
-
   select(ids: Iterable<string>): Map<string, FileContent> {
     return new Map(
       Array.from(new Set(ids), (id) => [

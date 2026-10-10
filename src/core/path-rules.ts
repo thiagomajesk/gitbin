@@ -50,6 +50,12 @@ export function stateLocation(root: string, id: string, binary: boolean): string
   return ".gitbin/vaults/" + root + (binary ? "/attachments/" : "/notes/") + id + ".bin";
 }
 
+export function inventoryPath(root: string): string {
+  //@ verify
+  //@ ensures \result === ".gitbin/vaults/" + root + "/inventory.json"
+  return ".gitbin/vaults/" + root + "/inventory.json";
+}
+
 export function safeSnapshotPath(path: string): boolean {
   //@ verify
   //@ ensures \result === (safeStoragePath(path) && path !== ".git" && !path.startsWith(".git/") && !path.endsWith("/.git") && !path.includes("/.git/"))

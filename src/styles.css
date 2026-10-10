@@ -276,6 +276,8 @@
   border-inline-start: 1px solid var(--background-modifier-border);
 }
 .gitbin-timeline-entry {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 180px;
   min-width: 0;
   margin: 0;
   padding: var(--size-4-4);
@@ -495,6 +497,29 @@
 .gitbin-diff-removed {
   color: var(--color-red);
 }
+.gitbin-warning-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+.gitbin-refresh-spinning {
+  animation: gitbin-refresh-spin 1s linear infinite;
+}
+@keyframes gitbin-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gitbin-refresh-spinning {
+    animation: none;
+  }
+}
+.gitbin-warning-notice-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--text-warning);
+}
 .gitbin-diff-file-body {
   padding: var(--size-4-4);
   border: 1px solid;
@@ -508,6 +533,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--size-4-3);
   margin-bottom: var(--size-4-4);
+}
+.gitbin-diff-file-header .gitbin-header-action {
+  margin-inline-start: auto;
+  flex-shrink: 0;
 }
 .gitbin-diff-panel {
   display: flex;
@@ -714,13 +743,61 @@
   gap: var(--size-4-2);
   width: 100%;
 }
-.gitbin-maintenance-progress progress {
-  display: block;
-  width: 100%;
-  height: var(--size-4-2);
-  accent-color: var(--interactive-accent);
-}
 .gitbin-maintenance-progress p {
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
+}
+.gitbin-download-pending .view-content {
+  position: relative;
+}
+.gitbin-download-pending .view-content > :not(.gitbin-download-panel) {
+  visibility: hidden;
+}
+.gitbin-download-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-4-3);
+  padding: var(--size-4-6);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  text-align: center;
+}
+.gitbin-download-panel p {
+  margin: 0;
+}
+.gitbin-download-panel .gitbin-progress {
+  width: min(280px, 80%);
+}
+
+.gitbin-progress {
+  width: 100%;
+  height: var(--size-4-2);
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-border);
+}
+.gitbin-progress-fill {
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--interactive-accent);
+  animation: gitbin-progress-slide 1.4s ease-in-out infinite alternate;
+}
+@keyframes gitbin-progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gitbin-progress-fill {
+    animation: none;
+    margin-inline: auto;
+  }
 }

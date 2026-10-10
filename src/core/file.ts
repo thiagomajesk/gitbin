@@ -9,7 +9,6 @@ import {
   encodeBytes as encode,
   type FileContent,
 } from "./content";
-import { descendingId } from "./order-decisions";
 import { Location, type StoredFile, validPath } from "./protocol";
 
 export class FileDocument {
@@ -61,10 +60,15 @@ export class FileDocument {
       return;
     }
     const text = this.doc.getText("text");
+    if (text.length === 0) {
+      this.doc.transact(() => {
+        this.doc.getMap("content").delete("value");
+        text.insert(0, next.value);
+      });
+      return;
+    }
     // Compute the complete edit before touching Yjs or advancing saved baselines.
-    const changes = diffChars(text.toJSON(), next.value, { timeout: 100 });
-    if (!changes)
-      throw new Error("Text diff exceeded its processing limit. Saved edits remain pending.");
+    const changes = diffChars(text.toJSON(), next.value);
     this.doc.transact(() => {
       this.doc.getMap("content").delete("value");
       let offset = 0;
@@ -136,17 +140,6 @@ export class FileDocument {
 
   deletionHasEdits(location: Location): boolean {
     return location.contentHash !== contentHash(this.content);
-  }
-
-  previousPath(): string | null {
-    const locations = Array.from(this.doc.getMap<unknown>("locations").entries()).sort(
-      ([left], [right]) => descendingId(left, right),
-    );
-    for (const [, raw] of locations) {
-      const location = Schema.decodeUnknownSync(Location)(raw);
-      if (location.path !== null) return location.path;
-    }
-    return null;
   }
 
   destroy(): void {

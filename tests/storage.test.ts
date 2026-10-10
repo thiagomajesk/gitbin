@@ -1,7 +1,9 @@
+import { Effect } from "effect";
 import { buildCommit } from "just-git/repo";
 import { expect, it } from "vitest";
 import { currentMetadata, metadataPath } from "../src/core/metadata";
-import { readEntries, readFiles } from "../src/git/objects";
+import { contentCatalog } from "../src/git/catalog";
+import { readEntries } from "../src/git/objects";
 import { gitSession } from "../src/git/session";
 import { discoverVaults } from "../src/git/vaults";
 
@@ -24,7 +26,9 @@ async function storage(files: Record<string, string>) {
     author: { name: "test", email: "test@example.com" },
   });
   const entries = await readEntries(repo, commit.hash, { root: "My Vault", name: "My Vault" });
-  return { repo, entries };
+  session.fetch = async () => ({ repo, revision: commit.hash, hasBranches: true });
+  const catalog = contentCatalog(session);
+  return { repo, entries, catalog };
 }
 async function discover(files: Record<string, string>) {
   return discoverVaults((await storage(files)).entries);
@@ -67,14 +71,14 @@ it("refuses future formats and mismatched binary object addresses", async () => 
     }),
   });
   const vault = { root: "My Vault", name: "My Vault" };
-  await expect(readFiles(future.repo, future.entries, vault, async () => {})).rejects.toThrow(
-    "newer Gitbin version",
+  await expect(Effect.runPromise(future.catalog.read(vault))).rejects.toThrow(
+    "Cannot validate repository metadata",
   );
   const corrupt = await storage({
     [metadataPath]: JSON.stringify(currentMetadata()),
     [".gitbin/vaults/My Vault/retained/" + "a".repeat(40)]: "wrong content",
   });
-  await expect(readFiles(corrupt.repo, corrupt.entries, vault, async () => {})).rejects.toThrow(
-    "Invalid binary storage entry",
-  );
+  await expect(
+    Effect.runPromise(corrupt.catalog.object({ hash: "a".repeat(40), bytes: 13 }, 100)),
+  ).rejects.toThrow("Cannot download this file");
 });

@@ -93,6 +93,7 @@ export function SyncStatus({ actions }: { readonly actions: SyncActions }) {
         <dl className="gitbin-summary">
           <StatusRow status={status} info={statusInfo} warning={blocked} />
           {snapshot.config.setupComplete ? <SyncDetails snapshot={snapshot} /> : null}
+          <DownloadUsage downloads={snapshot.downloads} />
         </dl>
       </div>
     </section>
@@ -146,4 +147,14 @@ function snapshotStatus(snapshot: UiSnapshot, error: string | null) {
     statusInfo: statusDescription(snapshot.issue?.message ?? null, snapshot.error, error),
     blocked: syncBlocked(snapshot.issue?.kind ?? null),
   };
+}
+
+function DownloadUsage({ downloads }: { readonly downloads: UiSnapshot["downloads"] }) {
+  if (!downloads) return null;
+  return (
+    <div className="gitbin-sync-status-group">
+      <dt>Storage used</dt>
+      <dd>{(downloads.used / (1024 * 1024)).toFixed(1)} MB</dd>
+    </div>
+  );
 }

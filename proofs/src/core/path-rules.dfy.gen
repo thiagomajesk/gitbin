@@ -102,6 +102,16 @@ lemma stateLocation_ensures(root: string, id: string, binary: bool)
 {
 }
 
+function inventoryPath(root: string): string
+{
+  ((".gitbin/vaults/" + root) + "/inventory.json")
+}
+
+lemma inventoryPath_ensures(root: string)
+  ensures (inventoryPath(root) == ((".gitbin/vaults/" + root) + "/inventory.json"))
+{
+}
+
 function safeSnapshotPath(path: string): bool
 {
   ((((safeStoragePath(path) && (path != ".git")) && !((|path| >= |".git/"| && path[..|".git/"|] == ".git/"))) && !((|path| >= |"/.git"| && path[|path|-|"/.git"|..] == "/.git"))) && !((StringIndexOf(path, "/.git/") >= 0)))

@@ -119,5 +119,43 @@ export function gitSession(connection: Connection) {
       pushLease = undefined;
     }
   };
-  return { repo, fetch, run, hydrate, pushConsolidation };
+  const clear = async () => {
+    await fs.rm(cwd, { recursive: true, force: true });
+    ready = false;
+  };
+  const release = async (hash: string) => {
+    if (!/^[a-f0-9]{40}$/.test(hash)) throw new Error("Invalid cache object identity.");
+    const value = await repo();
+    await fs.rm(`${cwd}/.git/objects/${hash.slice(0, 2)}/${hash.slice(2)}`, { force: true });
+    const directory = cwd + "/.git/objects/pack";
+    if (!(await fs.exists(directory))) return;
+    try {
+      for (const name of await fs.readdir(directory)) {
+        if (!name.endsWith(".idx")) continue;
+        const path = directory + "/" + name;
+        if ((await fs.stat(path)).size > 4096) continue;
+        const bytes = await fs.readFileBuffer(path);
+        if (!singletonPack(bytes, hash)) continue;
+        await fs.rm(path, { force: true });
+        await fs.rm(path.slice(0, -4) + ".pack", { force: true });
+      }
+    } finally {
+      value.objectStore.invalidatePacks?.();
+    }
+  };
+  return { repo, fetch, run, hydrate, pushConsolidation, release, clear };
+}
+
+function singletonPack(bytes: Uint8Array, hash: string): boolean {
+  if (bytes.length < 1052) return false;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const identity = [...bytes.subarray(1032, 1052)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return (
+    view.getUint32(0) === 0xff744f63 &&
+    view.getUint32(4) === 2 &&
+    view.getUint32(1028) === 1 &&
+    identity === hash
+  );
 }

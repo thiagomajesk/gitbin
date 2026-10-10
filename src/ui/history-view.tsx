@@ -32,7 +32,13 @@ export class HistoryView extends ItemView {
         store: this.plugin.ui,
         openFile: (selection) => {
           this.comparison?.close();
-          this.comparison = new FileHistoryModal(this.app, selection);
+          this.comparison = new FileHistoryModal(
+            this.app,
+            selection,
+            (change) => this.plugin.loadHistoryChange(change),
+            this.plugin.config.downloadMode === "on-demand",
+            (change) => this.plugin.historyCached(change),
+          );
           this.comparison.open();
         },
       }),

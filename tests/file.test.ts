@@ -95,15 +95,14 @@ describe("CRDT text and location registers", () => {
     restored.destroy();
   });
 
-  it("leaves CRDT state and baselines intact when the diff times out", () => {
+  it("does not reject text edits based on elapsed diff time", () => {
     const note = new FileDocument(crypto.randomUUID());
     note.edit(textContent("Original 😀"));
     note.materialized("Unicode.md");
-    const before = note.stored();
     const clock = vi.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValue(101);
     try {
-      expect(() => note.captureContent(textContent("Updated 😃"))).toThrow("processing limit");
-      expect(note.stored()).toEqual(before);
+      expect(() => note.captureContent(textContent("Updated 😃"))).not.toThrow();
+      expect(note.content.value).toBe("Updated 😃");
     } finally {
       clock.mockRestore();
     }

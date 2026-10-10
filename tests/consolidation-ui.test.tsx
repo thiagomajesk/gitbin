@@ -7,6 +7,16 @@ import { ConsolidationModal } from "../src/ui/consolidation-modal";
 import { ConsolidationPanel } from "../src/ui/consolidation-panel";
 
 afterEach(cleanup);
+// Obsidian supplies this DOM helper in the running app.
+Object.defineProperty(HTMLElement.prototype, "createDiv", {
+  configurable: true,
+  value(this: HTMLElement, options: { cls: string }) {
+    const child = document.createElement("div");
+    child.className = options.cls;
+    this.append(child);
+    return child;
+  },
+});
 const summary = {
   repository: "test repository",
   revision: "abc",
@@ -160,6 +170,9 @@ it("shows live progress only during a confirmed operation and prevents dismissal
   const user = userEvent.setup();
   for (const checkbox of screen.getAllByRole("checkbox")) await user.click(checkbox);
   await user.click(screen.getByRole("button", { name: "Reinitialize" }));
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Reinitializing…" }).disabled).toBe(
+    true,
+  );
   expect(screen.getByRole("progressbar").hasAttribute("value")).toBe(false);
   expect(screen.getByRole("status").textContent).toBe("Fetching repository…");
   await act(async () => report("Publishing repository…"));
