@@ -2,11 +2,12 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
-import { defaults, type Config } from "../src/core/config";
 import type { Authentication } from "../src/auth/credentials";
+import { type Config, defaults, type SyncPreferences } from "../src/core/config";
 import { SetupForm } from "../src/ui/setup-form";
-import { createUiStore } from "../src/ui/store";
 import type { RepositoryInspection } from "../src/ui/setup-types";
+import { createUiStore } from "../src/ui/store";
+
 afterEach(cleanup);
 vi.mock("obsidian", () => ({ setTooltip: vi.fn() }));
 function setup(vaults: RepositoryInspection["vaults"] = []) {
@@ -17,7 +18,7 @@ function setup(vaults: RepositoryInspection["vaults"] = []) {
     scanToSync: vi.fn(),
     consolidate: () => {},
     reinitialize: () => {},
-    saveSyncPreferences: vi.fn(async (preferences) => {
+    saveSyncPreferences: vi.fn(async (preferences: SyncPreferences) => {
       store.update({ config: { ...store.getSnapshot().config, ...preferences } });
       return true;
     }),
@@ -73,7 +74,7 @@ it("connects and starts sync in one action using the vault name", async () => {
   expect(actions.store.getSnapshot().config.setupComplete).toBe(true);
   await user.click(screen.getByRole("button", { name: "Scan to sync" }));
   expect(actions.scanToSync).toHaveBeenCalledOnce();
-  expect((screen.getByRole("button", { name: "Disconnect" }) as HTMLButtonElement).disabled).toBe(
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Disconnect" }).disabled).toBe(
     false,
   );
   expect(screen.queryByRole("button", { name: "Sync this vault" })).toBeNull();
@@ -132,10 +133,8 @@ it("preserves inputs and allows retry when initial sync fails", async () => {
   await connect(user);
   expect(screen.getByRole("alert").textContent).toContain("Your notes are preserved");
   expect(actions.store.getSnapshot().config.setupComplete).toBe(false);
-  expect((screen.getByRole("button", { name: "Connect" }) as HTMLButtonElement).disabled).toBe(
-    false,
-  );
-  expect((screen.getByLabelText("Password or access token") as HTMLInputElement).value).toBe(
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Connect" }).disabled).toBe(false);
+  expect(screen.getByLabelText<HTMLInputElement>("Password or access token").value).toBe(
     "test-credential",
   );
   await user.click(screen.getByRole("button", { name: "Connect" }));
@@ -147,7 +146,7 @@ it("offers Disconnect after reopening settings with an established connection", 
     config: { ...defaults(), setupComplete: true, remote: "https://git.example.com/notes.git" },
   });
   render(<SetupForm actions={actions} />);
-  expect((screen.getByRole("button", { name: "Disconnect" }) as HTMLButtonElement).disabled).toBe(
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Disconnect" }).disabled).toBe(
     false,
   );
 });
@@ -211,7 +210,7 @@ it("reuses a saved credential after remount without exposing it in the input", a
   const first = render(<SetupForm actions={actions} />);
   first.unmount();
   render(<SetupForm actions={actions} />);
-  const input = screen.getByLabelText("Password or access token") as HTMLInputElement;
+  const input = screen.getByLabelText<HTMLInputElement>("Password or access token");
   expect(input.value).toBe("");
   expect(input.placeholder).toBe("");
   await userEvent.setup().click(screen.getByRole("button", { name: "Connect" }));
@@ -289,12 +288,12 @@ it("disconnects without forgetting saved credentials and can reconnect", async (
   const user = userEvent.setup();
   render(<SetupForm actions={actions} />);
   await connect(user);
-  expect((screen.getByLabelText("Repository URL") as HTMLInputElement).disabled).toBe(true);
+  expect(screen.getByLabelText<HTMLInputElement>("Repository URL").disabled).toBe(true);
   await user.click(screen.getByRole("button", { name: "Disconnect" }));
   expect(actions.disconnect).toHaveBeenCalledOnce();
   expect(actions.store.getSnapshot().config.autoSync).toBe(false);
   expect(screen.getByText("Not connected")).toBeTruthy();
-  expect((screen.getByLabelText("Repository URL") as HTMLInputElement).disabled).toBe(false);
+  expect(screen.getByLabelText<HTMLInputElement>("Repository URL").disabled).toBe(false);
   await user.click(screen.getByRole("button", { name: "Connect" }));
   expect(actions.finish).toHaveBeenCalledTimes(2);
   expect(actions.inspect.mock.calls[1]?.[0].credentials).toEqual({
@@ -312,7 +311,7 @@ it("keeps the established connection when disconnect fails", async () => {
   await user.click(screen.getByRole("button", { name: "Disconnect" }));
   expect(screen.getByRole("alert").textContent).toContain("Could not disconnect");
   expect(screen.getByText("Connected")).toBeTruthy();
-  expect((screen.getByRole("button", { name: "Disconnect" }) as HTMLButtonElement).disabled).toBe(
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Disconnect" }).disabled).toBe(
     false,
   );
 });
@@ -333,7 +332,7 @@ it("fills a connected password field with a mask matching the stored credential 
     },
   });
   render(<SetupForm actions={actions} />);
-  const input = screen.getByLabelText("Password or access token") as HTMLInputElement;
+  const input = screen.getByLabelText<HTMLInputElement>("Password or access token");
   expect(input.value).toBe("*".repeat(password.length));
   expect(input.type).toBe("password");
   expect(input.disabled).toBe(true);
@@ -352,15 +351,11 @@ it("saves automatic sync preferences and disables delay controls in manual mode"
   });
   await user.click(screen.getByRole("switch", { name: "Sync automatically" }));
   expect(actions.store.getSnapshot().config.autoSync).toBe(false);
-  expect((screen.getByLabelText("Send local changes after") as HTMLSelectElement).disabled).toBe(
+  expect(screen.getByLabelText<HTMLSelectElement>("Send local changes after").disabled).toBe(true);
+  expect(screen.getByLabelText<HTMLSelectElement>("Check for remote changes every").disabled).toBe(
     true,
   );
-  expect(
-    (screen.getByLabelText("Check for remote changes every") as HTMLSelectElement).disabled,
-  ).toBe(true);
-  expect((screen.getByRole("button", { name: "Sync now" }) as HTMLButtonElement).disabled).toBe(
-    false,
-  );
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sync now" }).disabled).toBe(false);
   expect([...document.querySelectorAll("h3")].map((h) => h.textContent)).toEqual([
     "Repository",
     "Automatic sync",

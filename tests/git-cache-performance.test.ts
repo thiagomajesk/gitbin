@@ -1,52 +1,18 @@
-import { mkdtemp, readFile, writeFile, mkdir, stat, readdir, rm } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { DataAdapter } from "obsidian";
-import { expect, it } from "vitest";
 import { buildCommit, flattenTree, readBlobText, readCommit } from "just-git/repo";
-import { gitCache } from "../src/platform/git-cache";
+import { expect, it } from "vitest";
 import { gitSession } from "../src/git/session";
+import { gitCache } from "../src/platform/git-cache";
+import { diskAdapter } from "./disk-adapter";
 
 it("reuses immutable Git objects without repeated disk reads", async () => {
   const directory = await mkdtemp(join(tmpdir(), "gitbin-cache-profile-"));
   let reads = 0;
-  const location = (path: string) => join(directory, path);
-  const adapter = {
-    exists: async (path: string) => !!(await stat(location(path)).catch(() => null)),
-    stat: async (path: string) => {
-      const value = await stat(location(path)).catch(() => null);
-      return value
-        ? {
-            type: value.isDirectory() ? "folder" : "file",
-            size: value.size,
-            mtime: value.mtimeMs,
-            ctime: value.ctimeMs,
-          }
-        : null;
-    },
-    mkdir: async (path: string) => {
-      await mkdir(location(path));
-    },
-    read: (path: string) => readFile(location(path), "utf8"),
-    readBinary: async (path: string) => {
-      reads++;
-      return new Uint8Array(await readFile(location(path))).buffer;
-    },
-    write: (path: string, text: string) => writeFile(location(path), text),
-    writeBinary: (path: string, bytes: ArrayBuffer) =>
-      writeFile(location(path), new Uint8Array(bytes)),
-    remove: (path: string) => rm(location(path)),
-    rmdir: (path: string, recursive: boolean) => rm(location(path), { recursive }),
-    list: async (path: string) => {
-      const entries = await readdir(location(path), { withFileTypes: true });
-      return {
-        files: entries.filter((entry) => entry.isFile()).map((entry) => `${path}/${entry.name}`),
-        folders: entries
-          .filter((entry) => entry.isDirectory())
-          .map((entry) => `${path}/${entry.name}`),
-      };
-    },
-  } as unknown as DataAdapter;
+  const adapter = diskAdapter(directory, () => {
+    reads++;
+  });
 
   const fs = gitCache(adapter, ".obsidian/plugins/gitbin/local/profile/git");
   const connection = {

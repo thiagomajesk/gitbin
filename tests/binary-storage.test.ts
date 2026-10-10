@@ -1,9 +1,9 @@
-import type { App, DataAdapter } from "obsidian";
 import { Effect } from "effect";
+import type { App, DataAdapter } from "obsidian";
 import { expect, it, vi } from "vitest";
-import { ObsidianVault } from "../src/platform/vault";
 import { blobId } from "../src/core/blobs";
 import { binaryContent, contentBytes } from "../src/core/content";
+import { ObsidianVault } from "../src/platform/vault";
 
 vi.mock("obsidian", () => ({ Platform: { isDesktopApp: false } }));
 

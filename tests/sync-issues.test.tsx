@@ -1,14 +1,15 @@
-import { currentMetadata } from "../src/core/metadata";
+import { act, cleanup, render, screen } from "@testing-library/react";
 // @vitest-environment jsdom
 import { Effect } from "effect";
 import { afterEach, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
-import { decodeJournal, parseStoredData } from "../src/core/storage-format";
-import { syncIssue } from "../src/ui/sync-issue";
-import { SyncError } from "../src/core/errors";
-import { SyncStatus } from "../src/ui/sync-status";
-import { createUiStore } from "../src/ui/store";
 import { defaults } from "../src/core/config";
+import { SyncError } from "../src/core/errors";
+import { currentMetadata } from "../src/core/metadata";
+import { decodeJournal, parseStoredData } from "../src/core/storage-format";
+import { createUiStore } from "../src/ui/store";
+import { syncIssue } from "../src/ui/sync-issue";
+import { SyncStatus } from "../src/ui/sync-status";
+
 vi.mock("obsidian", () => ({ setTooltip: vi.fn() }));
 afterEach(cleanup);
 it.each([
@@ -62,9 +63,7 @@ it("explains consolidation below the status without starting migration or sync",
   expect(screen.queryByText("Error")).toBeNull();
   expect(screen.queryByText("Technical details")).toBeNull();
   expect(screen.queryByRole("button", { name: "Review migration…" })).toBeNull();
-  expect((screen.getByRole("button", { name: "Sync now" }) as HTMLButtonElement).disabled).toBe(
-    true,
-  );
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sync now" }).disabled).toBe(true);
   expect(view.synchronize).not.toHaveBeenCalled();
   act(() => view.store.update({ error: null, status: "Synced", stale: false }));
   expect(screen.queryByText(/Sync is currently paused due to pending migrations/)).toBeNull();

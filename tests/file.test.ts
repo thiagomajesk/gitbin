@@ -1,6 +1,6 @@
-import * as Y from "yjs";
-import { textContent, binaryContent } from "../src/core/content";
 import { describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
+import { binaryContent, textContent } from "../src/core/content";
 import { FileDocument } from "../src/core/file";
 
 function replicas() {

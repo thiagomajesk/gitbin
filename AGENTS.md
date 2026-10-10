@@ -15,4 +15,5 @@ Effect contracts:
 - Effect tests should use @effect/vitest, scoped fixtures and TestClock for Effect-managed time. React/browser tests and raw external adapter tests can use ordinary Vitest.
 
 Quality limits:
-- Source functions must stay within cyclomatic complexity 10, cognitive complexity 15, and 60 token-bearing lines per function (nested function bodies are counted separately). CRAP is capped at 30 using Fallow's estimate, not measured test coverage.
+- Source and tests must stay within cyclomatic complexity 10, cognitive complexity 15, and 60 token-bearing lines per function (nested function bodies are counted separately; suite registration wrappers are exempt).
+- Keep duplication below 5 percent. CRAP is capped at 30 using Fallow's estimate; it is not measured test coverage.

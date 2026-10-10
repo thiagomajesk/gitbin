@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { defaults } from "../src/core/config";
-import { SyncStatus } from "../src/ui/sync-status";
-import type { HistorySelection } from "../src/ui/sync-history";
+import { emptyHistory, type FileSnapshot, recordHistory } from "../src/core/history";
 import { FileHistory } from "../src/ui/file-history";
 import { HistoryPanel } from "../src/ui/history-panel";
 import { createUiStore } from "../src/ui/store";
-import { emptyHistory, recordHistory, type FileSnapshot } from "../src/core/history";
+import type { HistorySelection } from "../src/ui/sync-history";
+import { SyncStatus } from "../src/ui/sync-status";
+
 vi.mock("obsidian", () => ({ setTooltip: vi.fn() }));
 
 vi.mock("@pierre/diffs/react", () => ({
@@ -332,9 +333,7 @@ it("keeps failed manual sync available for retry without reporting success", asy
   await user.click(screen.getByRole("button", { name: "Sync now" }));
   expect(screen.getByText(/could not finish/)).toBeTruthy();
   expect(screen.getByRole("status").textContent).toBe("Last sync failed");
-  expect((screen.getByRole("button", { name: "Sync now" }) as HTMLButtonElement).disabled).toBe(
-    false,
-  );
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Sync now" }).disabled).toBe(false);
   await user.click(screen.getByRole("button", { name: "Sync now" }));
   expect(actions.synchronize).toHaveBeenCalledTimes(2);
   expect(screen.queryByText(/could not finish/)).toBeNull();

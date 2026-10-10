@@ -1,5 +1,5 @@
-import { beforeEach, expect, it, vi } from "vitest";
 import { hostname } from "node:os";
+import { beforeEach, expect, it, vi } from "vitest";
 import { commitAuthor, deviceName } from "../src/platform/device";
 
 it("uses the supplied email for attribution and retains the optional fallback", () => {

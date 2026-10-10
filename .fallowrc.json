@@ -11,11 +11,11 @@
     "maxCyclomatic": 10,
     "maxCognitive": 15,
     "maxUnitSize": 60,
-    "maxCrap": 30,
-    "ignore": ["tests/**"]
+    "maxCrap": 30
   },
   "duplicates": {
-    "ignore": ["tests/**"]
+    "ignoreDefaults": false,
+    "threshold": 5
   },
   "boundaries": {
     "zones": [

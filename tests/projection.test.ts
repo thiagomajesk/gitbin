@@ -1,5 +1,5 @@
-import { textContent } from "../src/core/content";
 import { expect, it } from "vitest";
+import { textContent } from "../src/core/content";
 import { FileDocument } from "../src/core/file";
 import { projectFiles } from "../src/core/projection";
 

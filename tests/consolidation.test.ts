@@ -1,13 +1,14 @@
-import { Effect } from "effect";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
-import { gitServer } from "./git-server";
+import { Effect } from "effect";
 import { MemoryFileSystem } from "just-git";
+import { afterEach, expect, it } from "vitest";
 import { consolidation } from "../src/git/consolidation";
 import { checkPushLease } from "../src/git/push-lease";
+import { gitServer } from "./git-server";
+
 const servers: Awaited<ReturnType<typeof gitServer>>[] = [];
 afterEach(async () => {
   for (const server of servers.splice(0)) await server.close();
@@ -56,7 +57,12 @@ async function fixture(corrupt = false) {
     network: {
       allowed: ["http://127.0.0.1"],
       fetch: async (input: string | URL | Request, init?: RequestInit) => {
-        if (race && String(input).includes("service=git-receive-pack")) {
+        if (
+          race &&
+          (input instanceof Request ? input.url : String(input)).includes(
+            "service=git-receive-pack",
+          )
+        ) {
           race = false;
           await writeFile(join(work, "race.txt"), "concurrent");
           git(work, "add", ".");
@@ -117,7 +123,7 @@ it("reconciles completed publication after restart and subsequent compatible com
   git(f.work, "fetch", "origin");
   git(f.work, "reset", "--hard", "origin/main");
   await writeFile(join(f.work, "next.txt"), "later update");
-  const metadata = JSON.parse(git(f.remote, "show", "main:.gitbin/metadata.json"));
+  const metadata: unknown = JSON.parse(git(f.remote, "show", "main:.gitbin/metadata.json"));
   await writeFile(join(f.work, ".gitbin/metadata.json"), JSON.stringify(metadata, null, 2));
   git(f.work, "add", ".");
   git(f.work, "commit", "-m", "after consolidation");

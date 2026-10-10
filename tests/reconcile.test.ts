@@ -1,9 +1,10 @@
 import { expect, it } from "vitest";
-import { FileDocument } from "../src/core/file";
 import { BinaryObjects } from "../src/core/blobs";
 import { contentHash, textContent } from "../src/core/content";
-import { reconcileConsolidation, captureRebasedEdit } from "../src/core/reconcile";
+import { FileDocument } from "../src/core/file";
 import { projectFiles } from "../src/core/projection";
+import { captureRebasedEdit, reconcileConsolidation } from "../src/core/reconcile";
+
 it("preserves a write racing with materialization after a history reset", () => {
   const blobs = new BinaryObjects();
   const id = crypto.randomUUID();

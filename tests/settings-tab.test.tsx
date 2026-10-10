@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "@testing-library/react";
+import { type App, Setting, type SettingGroup } from "obsidian";
 import { useEffect } from "react";
 import { expect, it, vi } from "vitest";
-import { Setting, type App, type SettingGroup } from "obsidian";
 import type GitbinPlugin from "../src/main";
 import { GitbinSettings } from "../src/ui/settings";
 

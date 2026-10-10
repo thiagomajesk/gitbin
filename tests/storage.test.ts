@@ -1,8 +1,8 @@
-import { currentMetadata, metadataPath } from "../src/core/metadata";
-import { expect, it } from "vitest";
 import { buildCommit } from "just-git/repo";
-import { gitSession } from "../src/git/session";
+import { expect, it } from "vitest";
+import { currentMetadata, metadataPath } from "../src/core/metadata";
 import { readEntries, readFiles } from "../src/git/objects";
+import { gitSession } from "../src/git/session";
 import { discoverVaults } from "../src/git/vaults";
 
 async function storage(files: Record<string, string>) {

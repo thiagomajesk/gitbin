@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readCredentials, scopedCredentials, storeCredentials } from "../src/auth/credentials";
+
 describe("Git authentication", () => {
   it("scopes credentials to the exact repository and never sends them to another origin", async () => {
     const credentials = { type: "basic" as const, username: "user", password: "secret" };

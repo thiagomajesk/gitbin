@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it, vi } from "vitest";
 import type { App } from "obsidian";
+import { afterEach, expect, it, vi } from "vitest";
 import { ConsolidationModal } from "../src/ui/consolidation-modal";
 import { ConsolidationPanel } from "../src/ui/consolidation-panel";
+
 afterEach(cleanup);
 const summary = {
   repository: "test repository",
@@ -17,17 +18,17 @@ it("requires explicit acknowledgement and cancel never publishes", async () => {
   const cancel = vi.fn();
   const user = userEvent.setup();
   render(<ConsolidationPanel summary={summary} apply={apply} cancel={cancel} />);
-  expect((screen.getByRole("button", { name: "Consolidate" }) as HTMLButtonElement).disabled).toBe(
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Consolidate" }).disabled).toBe(
     true,
   );
   await user.click(screen.getByRole("button", { name: "Cancel" }));
   expect(apply).not.toHaveBeenCalled();
   await user.click(screen.getByRole("checkbox", { name: /reviewed what/ }));
-  expect((screen.getByRole("button", { name: "Consolidate" }) as HTMLButtonElement).disabled).toBe(
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Consolidate" }).disabled).toBe(
     true,
   );
   await user.click(screen.getByRole("checkbox", { name: /backed up everything/ }));
-  expect((screen.getByRole("button", { name: "Consolidate" }) as HTMLButtonElement).disabled).toBe(
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "Consolidate" }).disabled).toBe(
     true,
   );
   await user.click(screen.getByRole("checkbox", { name: /can’t be undone/ }));
@@ -100,9 +101,9 @@ it("explains repair and requires acknowledgement before reinitializing", async (
       cancel={() => {}}
     />,
   );
-  const button = screen.getByRole("button", {
+  const button = screen.getByRole<HTMLButtonElement>("button", {
     name: "Reinitialize",
-  }) as HTMLButtonElement;
+  });
   expect(button.disabled).toBe(true);
   expect(screen.getByText(/Use this when damaged metadata/).textContent).toContain(
     "latest committed files",

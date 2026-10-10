@@ -1,9 +1,9 @@
 import { Effect } from "effect";
+import { contentEqual, type FileContent, textContent } from "../src/core/content";
 import { SyncError } from "../src/core/errors";
+import type { HistoryState } from "../src/core/history";
 import type { LocalVault } from "../src/core/ports";
 import type { Journal } from "../src/core/protocol";
-import type { HistoryState } from "../src/core/history";
-import { type FileContent, textContent, contentEqual } from "../src/core/content";
 
 export class MemoryVault implements LocalVault {
   readonly blobs = new Map<string, FileContent>();

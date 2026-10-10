@@ -1,8 +1,8 @@
 import { expect, it, vi } from "vitest";
+import { decodeSetup, exportSetup, importSetup } from "../src/auth/setup-transfer";
 import { defaults } from "../src/core/config";
-import { decodeSetup, importSetup, exportSetup } from "../src/auth/setup-transfer";
-import { createUiStore } from "../src/ui/store";
 import type { SetupActions } from "../src/ui/setup-types";
+import { createUiStore } from "../src/ui/store";
 
 const payload = {
   version: 1 as const,
@@ -65,7 +65,7 @@ it("imports through the existing inspected setup path using fresh device state",
   expect(target.finish).toHaveBeenCalledWith(
     {
       ...defaults(),
-      connectedAt: expect.any(Number),
+      connectedAt: expect.any(Number) as unknown,
       remote: payload.remote,
       root: payload.root,
       username: "you",

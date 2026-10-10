@@ -1,7 +1,8 @@
-import { spawn, execFileSync } from "node:child_process";
+import { Buffer } from "node:buffer";
+import { execFileSync, spawn } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join } from "node:path";
-import { Buffer } from "node:buffer";
+import process from "node:process";
 
 export async function gitServer(root: string) {
   execFileSync("git", ["-C", join(root, "remote.git"), "config", "uploadpack.allowFilter", "true"]);
@@ -19,7 +20,7 @@ export async function gitServer(root: string) {
   const serve = async (request: IncomingMessage, response: ServerResponse) => {
     const url = new URL(request.url ?? "/", "http://localhost");
     const chunks: Buffer[] = [];
-    for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    for await (const chunk of request as AsyncIterable<Uint8Array>) chunks.push(Buffer.from(chunk));
     const body = Buffer.concat(chunks);
     const child = spawn(executable, [], {
       env: {

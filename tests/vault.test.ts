@@ -1,8 +1,8 @@
-import type { App, TFile } from "obsidian";
 import { Effect } from "effect";
+import type { App, TFile } from "obsidian";
 import { expect, it, vi } from "vitest";
-import { ObsidianVault } from "../src/platform/vault";
 import { binaryContent, textContent } from "../src/core/content";
+import { ObsidianVault } from "../src/platform/vault";
 
 vi.mock("obsidian", () => ({ Platform: { isDesktopApp: false } }));
 const run = Effect.runPromise;

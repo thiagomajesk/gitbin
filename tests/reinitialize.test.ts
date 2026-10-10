@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { reinitializeRepository } from "../src/maintenance/reinitialize";
 import type { MigrationSnapshot } from "../src/maintenance/types";
+
 const source: MigrationSnapshot = {
   kind: "repository",
   files: new Map([

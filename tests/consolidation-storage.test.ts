@@ -1,9 +1,10 @@
+import { Effect } from "effect";
 import type { App, DataAdapter } from "obsidian";
 import { expect, it, vi } from "vitest";
-import { Effect } from "effect";
-import { maintenanceStorage } from "../src/platform/consolidation";
-import { createMigrationEngine } from "../src/maintenance/engine";
 import type { ConsolidationPreview } from "../src/git/consolidation";
+import { createMigrationEngine } from "../src/maintenance/engine";
+import { maintenanceStorage } from "../src/platform/consolidation";
+
 vi.mock("obsidian", () => ({ Platform: { isDesktopApp: false } }));
 function fixture() {
   const files = new Map<string, string>();
@@ -74,9 +75,9 @@ it("stages without replacing the original journal and resumes an interrupted ins
   f.fail(false);
   await Effect.runPromise(f.storage().install());
   expect(await Effect.runPromise(f.storage().pending())).toBeNull();
-  expect(
-    JSON.parse(f.files.get(f.directory + "/journal.json") ?? "{}").metadata.consolidationHash,
-  ).toBeNull();
+  expect(JSON.parse(f.files.get(f.directory + "/journal.json") ?? "{}")).toMatchObject({
+    metadata: { consolidationHash: null },
+  });
   expect(f.files.get(f.directory + "/journal.before-consolidation.json")).toBe(p.originalJournal);
 });
 it("refuses changed local journals and preserves stale checkpoints separately", async () => {

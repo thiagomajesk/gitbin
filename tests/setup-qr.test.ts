@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { drawSetupQr } from "../src/ui/setup-transfer-modal";
+
 vi.mock("obsidian", () => ({ Modal: class {} }));
 
 it("renders an opaque black-on-white QR with a white quiet zone in dark themes", () => {

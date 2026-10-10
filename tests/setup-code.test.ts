@@ -1,8 +1,9 @@
+import { Buffer } from "node:buffer";
 import { Effect } from "effect";
 import { expect, it, vi } from "vitest";
 import { createSetupCode, readSetupCode, unlockSetupCode } from "../src/auth/setup-code";
-import { defaults } from "../src/core/config";
 import { exportSetup } from "../src/auth/setup-transfer";
+import { defaults } from "../src/core/config";
 
 const payload = exportSetup(
   {

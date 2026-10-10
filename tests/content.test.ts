@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { contentFromBytes, contentBytes, binaryContent, textContent } from "../src/core/content";
+import { binaryContent, contentBytes, contentFromBytes, textContent } from "../src/core/content";
 
 it("keeps invalid UTF-8 and structured documents byte-exact and opaque", () => {
   for (const path of ["Drawing.canvas", "Table.base", "Data.json", "Image.png", "Document.pdf"])

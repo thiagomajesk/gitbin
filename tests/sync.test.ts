@@ -1,27 +1,27 @@
+import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { blobId } from "../src/core/blobs";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Effect } from "effect";
-import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createSyncEngine, type SyncEngine } from "../src/core/engine";
-import { io, SyncError } from "../src/core/errors";
-import type { GitRemote } from "../src/core/ports";
-import type { Registration } from "../src/core/protocol";
-import { createGitRemote, checkRemote } from "../src/git/remote";
+import { Effect } from "effect";
 import { MemoryFileSystem } from "just-git";
-import { gitServer } from "./git-server";
-import { MemoryVault } from "./helpers";
-import { commitAuthor } from "../src/platform/device";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { blobId } from "../src/core/blobs";
 import {
   binaryContent,
   contentBytes,
   contentFromBytes,
   type FileContent,
 } from "../src/core/content";
+import { createSyncEngine, type SyncEngine } from "../src/core/engine";
+import { io, SyncError } from "../src/core/errors";
+import type { GitRemote } from "../src/core/ports";
+import type { Registration } from "../src/core/protocol";
+import { checkRemote, createGitRemote } from "../src/git/remote";
+import { commitAuthor } from "../src/platform/device";
+import { gitServer } from "./git-server";
+import { MemoryVault } from "./helpers";
 
 const execute = promisify(execFile);
 vi.mock("obsidian", () => ({ Platform: {} }));
@@ -63,7 +63,10 @@ async function client(
     url: server.url,
     network: {
       fetch: async (input, init) => {
-        if (fault.failPush && String(input).endsWith("/git-receive-pack"))
+        if (
+          fault.failPush &&
+          (input instanceof Request ? input.url : String(input)).endsWith("/git-receive-pack")
+        )
           throw new Error("Simulated upload failure");
         return fetch(input, init);
       },
@@ -814,12 +817,7 @@ it.each(
   const restarted = await client(offline.local);
   await run(restarted.engine.sync());
   const result = await run(desktop.remote.read(registration));
-  const contents = [...result.files.values()].map((value) => value.value);
-  if (scenario === "unchanged") expect(contents).toEqual(["desktop edit"]);
-  if (scenario === "edit") expect(contents).toEqual(["offline edit"]);
-  if (["delete", "remote-delete"].includes(scenario)) expect(result.files.size).toBe(0);
-  if (scenario === "rename") expect(result.files.get("Renamed.md")?.value).toBe("desktop edit");
-  if (scenario === "conflict") expect(contents.sort()).toEqual(["desktop edit", "offline edit"]);
+  expectReconciledFiles(scenario, result);
   expect(restarted.local.journal?.metadata.consolidationHash).toBe(preview.consolidationHash);
   await run(restarted.engine.sync());
   expect((await run(desktop.remote.read(registration))).files).toEqual(result.files);
@@ -852,3 +850,15 @@ it("consolidation discards retained deleted attachments and shrinks CRDT history
   );
   expect(after.files.get("Keep.md")?.value).toBe("revision 7");
 });
+
+function expectReconciledFiles(
+  scenario: string,
+  result: import("../src/core/ports").RemoteSnapshot,
+) {
+  const contents = [...result.files.values()].map((value) => value.value);
+  if (scenario === "unchanged") expect(contents).toEqual(["desktop edit"]);
+  if (scenario === "edit") expect(contents).toEqual(["offline edit"]);
+  if (["delete", "remote-delete"].includes(scenario)) expect(result.files.size).toBe(0);
+  if (scenario === "rename") expect(result.files.get("Renamed.md")?.value).toBe("desktop edit");
+  if (scenario === "conflict") expect(contents.sort()).toEqual(["desktop edit", "offline edit"]);
+}

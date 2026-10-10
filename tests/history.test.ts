@@ -1,8 +1,8 @@
-import { textContent, binaryContent } from "../src/core/content";
 import { describe, expect, it } from "vitest";
-import { emptyHistory, recordHistory, snapshotFiles, type FileSnapshot } from "../src/core/history";
+import { binaryContent, textContent } from "../src/core/content";
 import { FileDocument } from "../src/core/file";
 import { hashText } from "../src/core/hash";
+import { emptyHistory, type FileSnapshot, recordHistory, snapshotFiles } from "../src/core/history";
 
 function file(text: string, path: string | null = "List.md"): FileSnapshot {
   return { id: "file", path, text, binary: false, hash: hashText(text) };
