@@ -17,7 +17,7 @@ export function SyncPreferencesForm({ actions }: { readonly actions: SetupAction
         <PreferenceToggle
           id={id + "-auto"}
           label="Sync automatically"
-          description="Send and receive changes automatically while Obsidian is running."
+          description="Sync file changes automatically across devices"
           checked={config.autoSync}
           disabled={disabled}
           onChange={(checked) => void save({ autoSync: checked })}
@@ -141,7 +141,7 @@ function DownloadPreferences({
       <PreferenceToggle
         id={id + "-downloads"}
         label="On-demand downloads"
-        description="Download files when you open them. Turn off to download all files during sync."
+        description="Download files when you open them. Helpful for saving storage space"
         checked={config.downloadMode === "on-demand"}
         disabled={disabled}
         onChange={(checked) => void save({ downloadMode: checked ? "on-demand" : "all" })}
@@ -171,7 +171,7 @@ function StorageLimit({
     <DelayPreference
       id={id}
       label="Local storage limit"
-      description="Remove unused downloads to stay within this limit."
+      description="Limit the storage used to sync this vault"
       value={value}
       disabled={disabled}
       options={[
@@ -274,7 +274,7 @@ function SyncDelays({
       <DelayPreference
         id={id + "-upload"}
         label="Send local changes after"
-        description="Wait this long after your last edit before syncing."
+        description="Choose how long to wait after an edit before syncing"
         value={config.uploadDelay}
         disabled={disabled || !config.autoSync}
         options={[
@@ -289,7 +289,7 @@ function SyncDelays({
       <DelayPreference
         id={id + "-remote"}
         label="Check for remote changes every"
-        description="How often to check the repository for changes from other devices."
+        description="Choose how often to check the repository for changes"
         value={config.remoteCheckInterval}
         disabled={disabled || !config.autoSync}
         options={[

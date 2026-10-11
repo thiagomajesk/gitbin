@@ -163,7 +163,7 @@ function MaintenanceSection({
           <div className="setting-item-info">
             <div className="setting-item-name">Reinitialize repository</div>
             <div className="setting-item-description">
-              Repair damaged sync data so your vaults can sync again.
+              Repair damaged metadata so your vaults can sync again
             </div>
           </div>
           <div className="setting-item-control">

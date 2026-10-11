@@ -523,7 +523,7 @@
     "boundary": "Obsidian settings metadata and React root lifecycle callbacks; framework-controlled mutable DOM."
   },
   "src/ui/setup-form.tsx": {
-    "digest": "ce73029128b70ee84150ef4307761bb486557d2d0226e0e54f12552a066292e5",
+    "digest": "76ade8376e9add24589f334d25dc5d5a3490618f4031497da5f5cba85ab2fe93",
     "verified": [],
     "boundary": "React hooks, JSX and event dispatch into setup/maintenance actions; external UI runtime."
   },
@@ -565,7 +565,7 @@
     "boundary": "JavaScript Error/SyncError instanceof and bounded cause traversal; user-facing copy is produced by verified issueValue."
   },
   "src/ui/sync-preferences.tsx": {
-    "digest": "8baf7b31227f4aa2aa8251599164993f7f00586ad8f3351cc4ec5550c9a0a7b3",
+    "digest": "53f899e705dfb3ae6896c3ae203d6e26e48159ca28b98d3a88c8a4c48ff7577d",
     "verified": [],
     "boundary": "React JSX/hooks, DOM number parsing and asynchronous persistence callbacks; external UI runtime."
   },
