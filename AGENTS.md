@@ -1,5 +1,5 @@
 - Commit using Conventional Commits and run the full quality gate before committing.
-- Document commands in README.md; keep AGENTS.md to short rules.
+- Document commands in CONTRIBUTING.md; keep AGENTS.md to short rules.
 - Prefer simple, declarative solutions.
 - Define tests and success criteria before non-trivial changes.
 - Test observable behavior, invariants, and credible regressions.
