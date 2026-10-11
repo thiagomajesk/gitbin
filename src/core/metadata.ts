@@ -8,6 +8,7 @@ export const migrationIds = Object.freeze([
   "unified-metadata",
   "vault-storage",
   "content-inventory",
+  "structured-canvas",
 ]);
 export const metadataPath = ".gitbin/metadata.json";
 export const Metadata = Schema.Struct({

@@ -20,6 +20,7 @@ function batch(ctx: SelectiveContext, snapshot: InventorySnapshot) {
   let bytes = 0;
   for (const entry of ctx.entries.values()) {
     if (!entry.dirty) continue;
+    if (ctx.issues.has(entry.localPath ?? entry.file.path ?? entry.file.id)) continue;
     const changed = changedObjects(entry);
     if (entry.issue && changed.length > 0) continue;
     const extra = changed

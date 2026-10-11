@@ -26,6 +26,7 @@ export default [
       "src/maintenance/unified-metadata.ts",
       "src/maintenance/vault-storage.ts",
       "src/maintenance/content-inventory.ts",
+      "src/maintenance/structured-canvas.ts",
       "src/git/remote.ts",
       "src/git/catalog.ts",
       "src/git/selective.ts",

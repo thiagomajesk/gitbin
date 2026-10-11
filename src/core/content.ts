@@ -70,7 +70,8 @@ const textExtensions = new Set([
 function textPath(path: string): boolean {
   return textExtensions.has(path.split(".").at(-1)?.toLowerCase() ?? "");
 }
-export function rawContentKind(path: string, bytes: Uint8Array): "text" | "binary" {
+export function rawContentKind(path: string, bytes: Uint8Array): "text" | "binary" | "canvas" {
+  if (path.toLowerCase().endsWith(".canvas")) return "canvas";
   if (!textPath(path) || bytes.includes(0)) return "binary";
   try {
     new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);

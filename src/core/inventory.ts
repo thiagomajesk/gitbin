@@ -27,7 +27,7 @@ export const InventoryFile = Schema.Struct({
   statePath: Schema.String,
   state: ObjectReference,
   content: ObjectReference,
-  kind: Schema.Literals(["text", "binary"]),
+  kind: Schema.Literals(["text", "binary", "canvas"]),
   locations: Schema.Array(LocationOperation),
 });
 export type InventoryFile = typeof InventoryFile.Type;
@@ -55,7 +55,7 @@ export function validateInventory(inventory: Inventory, root: string): void {
       throw new Error("Inventory path differs from its location history.");
     if (ids.has(file.id)) throw new Error("Duplicate inventory identity.");
     ids.add(file.id);
-    const category = file.kind === "text" ? "notes" : "attachments";
+    const category = file.kind === "binary" ? "attachments" : "notes";
     if (file.statePath !== `.gitbin/vaults/${root}/${category}/${file.id}.bin`)
       throw new Error("Inventory state is outside its vault.");
     if (file.path === null) continue;

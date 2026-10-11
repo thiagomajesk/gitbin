@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+import { ActivityEvent } from "./activity";
 import { type AvailabilityEntry, initialEntry } from "./availability";
 import { rawContentKind } from "./content";
 import { attempt, explain, SyncError } from "./errors";
@@ -17,7 +18,12 @@ export const createLocalEntry = Effect.fn("selective.createLocal")(function* (
   const kind = rawContentKind(path, bytes);
   const document = new RawDocument();
   return yield* Effect.gen(function* () {
-    yield* attempt("Cannot prepare this file for sync.", () => document.edit(bytes, kind));
+    yield* attempt(
+      kind === "canvas"
+        ? "Cannot sync this Canvas. Check its JSON, cards and connections; the original file is preserved."
+        : "Cannot prepare this file for sync.",
+      () => document.edit(bytes, kind),
+    );
     const content = yield* ctx.stage(bytes);
     const state = yield* ctx.stage(document.bytes());
     const id = crypto.randomUUID();
@@ -75,10 +81,15 @@ const captureContent = Effect.fn("selective.captureContent")(function* (
   });
   return yield* Effect.gen(function* () {
     const kind = rawContentKind(entry.localPath ?? "", bytes);
-    yield* attempt("Cannot capture saved edits.", () => {
-      branch.edit(bytes, kind);
-      merged.merge(branch.bytes());
-    });
+    yield* attempt(
+      kind === "canvas"
+        ? "Cannot sync this Canvas. Check its JSON, cards and connections; the original file is preserved."
+        : "Cannot capture saved edits.",
+      () => {
+        branch.edit(bytes, kind);
+        merged.merge(branch.bytes());
+      },
+    );
     const localContent = yield* ctx.stage(bytes);
     const baselineState = yield* ctx.stage(branch.bytes());
     const binary = merged.binaryReference();
@@ -86,7 +97,11 @@ const captureContent = Effect.fn("selective.captureContent")(function* (
       ? binary === localContent.hash
         ? localContent
         : entry.file.content
-      : yield* ctx.stage(merged.textBytes());
+      : yield* ctx.stage(
+          yield* attempt("Cannot materialize merged content. Original files were preserved.", () =>
+            merged.textBytes(),
+          ),
+        );
     if (binary && binary !== content.hash)
       return yield* new SyncError({
         message: "The merged binary reference is unavailable. Local bytes were preserved.",
@@ -169,7 +184,10 @@ const captureEntry = Effect.fn("selective.captureEntry")(function* (
 });
 
 function changedContent(entry: AvailabilityEntry, bytes: Uint8Array): boolean {
-  return objectReference(bytes).hash !== entry.localContent?.hash;
+  return (
+    rawContentKind(entry.localPath ?? "", bytes) !== entry.file.kind ||
+    objectReference(bytes).hash !== entry.localContent?.hash
+  );
 }
 
 function captureTargets(ctx: SelectiveContext, paths?: ReadonlySet<string>) {
@@ -197,6 +215,7 @@ export const captureSelective = Effect.fn("selective.capture")(function* (
       Effect.catch((error) =>
         Effect.sync(() => {
           entry.issue = explain(error);
+          ctx.issues.set(entry.localPath ?? entry.file.path ?? entry.file.id, explain(error));
           entry.dirty = true;
         }),
       ),
@@ -222,6 +241,8 @@ export const captureSelective = Effect.fn("selective.capture")(function* (
       ),
     );
   }
+  for (const [path, message] of ctx.issues)
+    yield* Effect.logError(new ActivityEvent(path + ": " + message));
   yield* ctx.persist();
   ctx.staging.clear();
   yield* ctx.collect();

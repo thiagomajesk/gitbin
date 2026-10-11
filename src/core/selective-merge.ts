@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { type AvailabilityEntry, initialEntry } from "./availability";
+import { rawContentKind } from "./content";
 import { conflictingBinary } from "./download-decisions";
 import { attempt, explain, SyncError } from "./errors";
 import type { InventoryFile } from "./inventory";
@@ -53,12 +54,16 @@ const mergedContent = Effect.fn("selective.mergeContent")(function* (
     yield* attempt("Cannot merge this file's content state.", () => document.merge(remoteBytes));
     const state = yield* ctx.stage(document.bytes());
     const binary = document.binaryReference();
-    const kind = binary ? ("binary" as const) : ("text" as const);
+    const kind = document.kind();
     const content = binary
       ? binary === incoming.content.hash
         ? incoming.content
         : entry.file.content
-      : yield* ctx.stage(document.textBytes());
+      : yield* ctx.stage(
+          yield* attempt("Cannot materialize merged content. Original files were preserved.", () =>
+            document.textBytes(),
+          ),
+        );
     yield* attempt("Merged content is inconsistent.", () => document.verify(content));
     return {
       state,
@@ -90,15 +95,16 @@ const rebaseContent = Effect.fn("selective.rebaseContent")(function* (
     () => new RawDocument(state),
   );
   return yield* Effect.gen(function* () {
-    yield* attempt("Cannot rebase saved content.", () => document.edit(bytes, entry.file.kind));
+    const kind = rawContentKind(entry.localPath ?? incoming.path ?? "", bytes);
+    yield* attempt("Cannot rebase saved content.", () => document.edit(bytes, kind));
     const next = yield* ctx.stage(document.bytes());
     entry.baselineState = next;
     return {
       ...incoming,
       state: next,
-      kind: entry.file.kind,
+      kind,
       content: entry.file.content,
-      statePath: stateLocation(ctx.vault.root, incoming.id, entry.file.kind === "binary"),
+      statePath: stateLocation(ctx.vault.root, incoming.id, kind === "binary"),
     };
   }).pipe(
     Effect.ensuring(
@@ -197,39 +203,50 @@ function adoptReinitialized(
   return candidate;
 }
 
+const integrateFile = Effect.fn("selective.integrateFile")(function* (
+  ctx: SelectiveContext,
+  incoming: InventoryFile,
+  snapshot: InventorySnapshot,
+) {
+  const entry = findEntry(ctx, incoming, snapshot);
+  if (!entry) {
+    const fresh = initialEntry(incoming);
+    fresh.consolidationHash = snapshot.consolidationHash;
+    ctx.entries.set(incoming.id, fresh);
+    return;
+  }
+  if (ctx.issues.has(entry.localPath ?? entry.file.path ?? entry.file.id)) return;
+  ctx.protected.add(entry.file.id);
+  yield* mergeEntry(
+    ctx,
+    entry,
+    incoming,
+    entry.consolidationHash !== snapshot.consolidationHash,
+  ).pipe(
+    Effect.tap(() =>
+      Effect.sync(() => {
+        entry.consolidationHash = snapshot.consolidationHash;
+      }),
+    ),
+    Effect.catch((error) =>
+      Effect.sync(() => {
+        entry.issue = explain(error);
+      }),
+    ),
+    Effect.ensuring(
+      Effect.sync(() => {
+        ctx.protected.delete(entry.file.id);
+      }),
+    ),
+  );
+});
+
 export const integrateSelective = Effect.fn("selective.integrate")(function* (
   ctx: SelectiveContext,
   snapshot: InventorySnapshot,
 ) {
   const incomingIds = new Set(snapshot.inventory.files.map((file) => file.id));
-  for (const incoming of snapshot.inventory.files) {
-    const entry = findEntry(ctx, incoming, snapshot);
-    if (!entry) {
-      const fresh = initialEntry(incoming);
-      fresh.consolidationHash = snapshot.consolidationHash;
-      ctx.entries.set(incoming.id, fresh);
-      continue;
-    }
-    ctx.protected.add(entry.file.id);
-    yield* mergeEntry(
-      ctx,
-      entry,
-      incoming,
-      entry.consolidationHash !== snapshot.consolidationHash,
-    ).pipe(
-      Effect.tap(() =>
-        Effect.sync(() => {
-          entry.consolidationHash = snapshot.consolidationHash;
-        }),
-      ),
-      Effect.catch((error) =>
-        Effect.sync(() => {
-          entry.issue = explain(error);
-        }),
-      ),
-    );
-    ctx.protected.delete(entry.file.id);
-  }
+  for (const incoming of snapshot.inventory.files) yield* integrateFile(ctx, incoming, snapshot);
   for (const entry of [...ctx.entries.values()]) {
     if (incomingIds.has(entry.file.id) || !entry.base) continue;
     if (entry.consolidationHash === snapshot.consolidationHash)

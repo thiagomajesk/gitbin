@@ -8,6 +8,7 @@ import { compactRepository } from "./compact";
 import { contentInventoryMigration } from "./content-inventory";
 import { snapshotMetadata, stampMetadata } from "./metadata";
 import { reinitializeRepository } from "./reinitialize";
+import { structuredCanvasMigration } from "./structured-canvas";
 import type { ConsolidatedData, MigrationSnapshot, StorageMigration } from "./types";
 import { unifiedMetadataMigration } from "./unified-metadata";
 import { repositoryVaults, validateCurrent } from "./validation";
@@ -18,6 +19,7 @@ export const storageMigrations: readonly StorageMigration[] = Object.freeze([
   unifiedMetadataMigration,
   vaultStorageMigration,
   contentInventoryMigration,
+  structuredCanvasMigration,
 ]);
 function registryIds(registry: readonly StorageMigration[]): string[] {
   const ids = registry.map((step) => step.id);

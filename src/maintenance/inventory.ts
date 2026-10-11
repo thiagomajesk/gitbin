@@ -100,7 +100,12 @@ function retainDeleted(
   const document = new FileDocument(record.id);
   try {
     document.merge(bytes);
-    const content = deletedContent(document, source.files, root, record.kind);
+    const content = deletedContent(
+      document,
+      source.files,
+      root,
+      record.kind === "binary" ? "binary" : "text",
+    );
     if (!content) throw new Error("Missing deleted file content.");
     files.set(retained, content);
   } finally {

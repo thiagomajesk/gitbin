@@ -42,6 +42,20 @@
     "verified": [],
     "boundary": "Mutable BinaryObjects instances, SHA-1, byte encoding and schema validation. Class heap mutation and cryptographic correctness are not modeled."
   },
+  "src/core/canvas-data.ts": {
+    "digest": "61e2b4db4066a7f68b7730a3e2357d7b94175fb0bdb3482706e6c7924ba8cde2",
+    "verified": [],
+    "boundary": "UTF-8 and JSON decoding, dynamic records, recursive JSON replacer, sets and schema validation. JSON/Yjs object semantics are outside the translator; tested with malformed data, duplicate IDs, dangling endpoints and unknown-field round trips."
+  },
+  "src/core/canvas-document.ts": {
+    "digest": "d4bc9c688cbbe4bdc47c5427e6dceeac797e8425f0f177af285b05b7ccb312a1",
+    "verified": [],
+    "boundary": "Yjs map/text heap mutations, array sorting and JSON materialization. Entity visibility uses the verified visibleCanvasEntity predicate. Two-device tests cover convergence, text and property races, deletion, explicit restore, stacking order and unknown properties; Yjs convergence is a library boundary."
+  },
+  "src/core/canvas-values.ts": {
+    "digest": "a800fe192de6b90ded754033bc6e324dcaec7e89b2afbf372ef087331fa8750a",
+    "verified": ["visibleCanvasEntity"]
+  },
   "src/core/checkpoint.ts": {
     "digest": "34dd4633f5963c6c3ca9265a1373390cbfffe2dcb1ff80602b6ea2078c3a2249",
     "verified": [],
@@ -57,7 +71,7 @@
     "verified": ["textContent", "equalContent"]
   },
   "src/core/content.ts": {
-    "digest": "dae5683a6e3c7c84951a0972bc25af4d07dee9777aeacf9eed18e6ac7206200f",
+    "digest": "d7b2fc450853a69d1fbe1acf2732a1ef05c3d9b34f5335fd71e40eef14b5a195",
     "verified": [],
     "boundary": "Typed-array/base64/UTF-8 codecs, SHA-256 and regex extension parsing. Content equality delegates to verified equalContent; text construction is re-exported from a verified module."
   },
@@ -102,7 +116,7 @@
     "boundary": "Yjs snapshots, object identity, random IDs, timestamps, Map aggregation, JSON byte-budget trimming and sort. Empty state and change classification delegate to verified functions. Sort is axiomatic in the pinned translator."
   },
   "src/core/inventory.ts": {
-    "digest": "103391eae19b6a88a5250fbf7d7d872b77895264968d9c0668f53ba8e8c43624",
+    "digest": "0e3a2c5332d6463255106d927385e09fe855f4dc8b80d8dafc9e48755798aac9",
     "verified": [],
     "boundary": "Effect Schema validation, mutable Sets, JSON/UTF-8 codecs and cryptographic object hashing. Inventory path construction delegates to verified inventoryPath. Native byte arrays, cryptographic correctness and thrown schema errors are outside the prover model."
   },
@@ -116,7 +130,7 @@
     "verified": ["metadataValue"]
   },
   "src/core/metadata.ts": {
-    "digest": "5b5af10120809a6cc9386d5a0014a189d1ecddd62393e408872b8d5f9230d27b",
+    "digest": "724d105190c8b17ba8d324eab69978f9c2c6e556a2240a25ebfe919924f445c6",
     "verified": [],
     "boundary": "Schema validation and SyncError throwing around verified migrationSequence and metadataValue. Migration registry is configuration data, not an independently executed function."
   },
@@ -155,12 +169,12 @@
     "boundary": "Effect Schema decoding, RegExp path validation and throwing validation adapters. Full RegExp and Unicode case-folding semantics are not modeled."
   },
   "src/core/raw-document.ts": {
-    "digest": "4a5e24b3e3f3d46e1a9916d03d4bfa6a0a1beeb137ffe12a2a9559f62bde65cb",
+    "digest": "946eee482e9e9b330d552eccd41f4f47054dd4fa92b6cb1b91a618604d2ed024",
     "verified": [],
     "boundary": "Yjs document mutation and merging, byte codecs, SHA-1 and timeout-bounded diffChars. No axiomatic Yjs convergence or wall-clock timeout model is assumed."
   },
   "src/core/selective-capture.ts": {
-    "digest": "671e0bb3eb1b0265e234b91393c19845cc8cabd09e30eb9004c91a7252576ed3",
+    "digest": "5b3454d95edaccff45a17035aeaca0f612be5b267df12cdc03f994e9358b7cfb",
     "verified": [],
     "boundary": "Effect reads, mutable journal entries, Yjs baseline branching, UUID generation and byte hashing. Content-change detection depends on cryptographic object references; interrupted writes and oversized local edits have executable coverage."
   },
@@ -190,7 +204,7 @@
     "boundary": "Effect admission and filesystem publication, mutable owner maps, schema-inferred intent records and path collision ordering. Size admission delegates to verified downloadAdmission; interrupted materialization is exercised by durable-journal tests."
   },
   "src/core/selective-merge.ts": {
-    "digest": "f7cd8e081670701db75d63e01238192ca53135e63d51316e2a3c61eb8079fda7",
+    "digest": "98cd58913d6295d85a2cc14f94d7a0084dda152f8944b4be76f39b3323288a49",
     "verified": [],
     "boundary": "Effect object retrieval, Yjs document merge/rebase and mutable identity adoption after maintenance. Binary conflict decision delegates to verified conflictingBinary. Map/Set operations and schema-inferred records are outside the translator subset."
   },
@@ -200,7 +214,7 @@
     "boundary": "Interfaces only; Effect services, native Uint8Array values and schema-inferred domain types declare adapter boundaries."
   },
   "src/core/selective-publish.ts": {
-    "digest": "48bbbfb8767fc5bd1ebc72f668a4f100df8a86a8b3988137a2ebae7159cf3624",
+    "digest": "bc823fbcb365570c9da6e698814d97b16e3e8a7682c256e685250a33854f83fa",
     "verified": [],
     "boundary": "Effect Git publication, mutable Map batch construction and remote compare-and-swap acknowledgements. Network state, object storage and journal durability are adapter properties, tested against a real disposable Git server."
   },
@@ -303,12 +317,12 @@
     "boundary": "Explicit legacy-to-current migration through Effect Schema, Yjs and raw object Maps. Cryptographic identities and mutable native codecs are validated operationally; legacy decoding remains confined to migration."
   },
   "src/maintenance/engine.ts": {
-    "digest": "16d43a586240c15580e2060b54e05e4d9c95b5b37c44a75bb011663530a562f7",
+    "digest": "bf461c2da6d1d689846c03127c1144ea1672aa75616b8d6d0fcf6959defc675c",
     "verified": [],
     "boundary": "Effect migration execution, plugin-supplied callbacks, object-identity registry check, RegExp IDs, typed-array cloning and random hash generation. Sequence ordering is verified separately."
   },
   "src/maintenance/inventory.ts": {
-    "digest": "1ed4401780ddc7b4793b0ce5ca299c3968516b37a572913575d8956cda398d0f",
+    "digest": "e8cf24c3164450434650ad419e64697eaa938ee4d68290451d344bfc4dfa3596",
     "verified": [],
     "boundary": "Yjs document decoding and lifetime, Git SHA-1 references, mutable snapshot Maps and schema validation. Does not assume a Yjs or cryptographic model in proofs."
   },
@@ -331,6 +345,11 @@
     "digest": "26865f8b11b8802be8f5c7a7c07ee33a00d9bef37efa4dd2685454a6c61c5694",
     "verified": [],
     "boundary": "RegExp vault discovery, Yjs documents, byte codecs and random IDs. Metadata exclusion and hidden-path rules delegate to verified predicates."
+  },
+  "src/maintenance/structured-canvas.ts": {
+    "digest": "720ad15186d55f81651235282de42d95e7a18a030d19b9b6f58216174e83733a",
+    "verified": [],
+    "boundary": "Effect migration adapter, snapshot Maps and Yjs state rebuilding. Tested for compatibility gating, byte and identity preservation, invalid-input rollback and offline device rebasing. Async migration and external-library behavior are not modeled by the prover."
   },
   "src/maintenance/types.ts": {
     "digest": "6dae409303bb11c6c4b0737b9e61be51e7058d3305f3f0af15cb27e3b986531c",
