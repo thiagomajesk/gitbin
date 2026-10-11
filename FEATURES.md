@@ -1,6 +1,6 @@
 # Gitbin features
 
-This document follows the [FEATURES.md format](https://features.md/). It describes the current source tree, which includes work newer than release 0.0.4. `stable` identifies established released behavior; `in-progress` identifies unreleased or experimentally supported behavior. Checked criteria point to existing coverage, not a claim that every device has been tested.
+This document follows the [FEATURES.md format](https://features.md/). It describes release 0.0.5. `stable` identifies established released behavior; `in-progress` identifies experimentally supported behavior. Checked criteria point to existing coverage, not a claim that every device has been tested.
 
 ## Sync across devices
 
@@ -17,7 +17,7 @@ This document follows the [FEATURES.md format](https://features.md/). It describ
 
 ## On-demand downloads
 
-- **Stability**: in-progress — implemented, unreleased
+- **Stability**: stable
 - **Description**: Keep all files visible in Obsidian while downloading their contents only when needed. Useful for large vaults or limited local storage.
 - **Properties**:
   - Opening a file or displaying an embed triggers its download. Unloaded notes cannot be edited until ready.
@@ -34,7 +34,7 @@ This document follows the [FEATURES.md format](https://features.md/). It describ
 
 ## Sync history and activity
 
-- **Stability**: in-progress — history is released; activity logging and deferred comparisons are unreleased
+- **Stability**: stable
 - **Description**: Review file changes and see what sync is doing when something needs attention.
 - **Properties**:
   - Sync history offers Local, Remote, and Final comparisons where available.
@@ -47,7 +47,7 @@ This document follows the [FEATURES.md format](https://features.md/). It describ
 
 ## Repository maintenance
 
-- **Stability**: in-progress — implemented, unreleased
+- **Stability**: stable
 - **Description**: Clean up accumulated history or repair damaged metadata so your vaults can sync again.
 - **Properties**:
   - **Consolidate** keeps the latest committed files and replaces the branch history with one commit. Use it to discard old revisions or when sync asks you to consolidate after an update.
@@ -62,7 +62,7 @@ This document follows the [FEATURES.md format](https://features.md/). It describ
 
 ## Structured Canvas merging
 
-- **Stability**: in-progress — implemented, unreleased
+- **Stability**: stable
 - **Description**: Merge independent changes to Canvas cards, text, and connections while continuing to use Obsidian's native Canvas editor.
 - **Properties**:
   - Canvas files remain ordinary `.canvas` files. Cards and connections merge by identity; text inside cards supports concurrent edits.

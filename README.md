@@ -15,7 +15,7 @@ Sync your Obsidian vaults across devices using Git. Work offline and sync when y
 - **Save space.** Download files when you open them and choose how much local storage to use.
 - **Maintain your vault.** Consolidate old history or repair damaged metadata when needed.
 
-On-demand downloads, maintenance, activity logs, and structured Canvas merging are newer than release 0.0.4. Mobile support is experimental and has not yet been tested on physical devices.
+Mobile support is experimental and has not yet been tested on physical devices.
 
 ## How it works
 
